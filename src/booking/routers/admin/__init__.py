@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from . import oidc_claims, parking_lots, parking_spaces, users, email_settings, timezone_settings, logs, reports, backup_settings, dynamic_reports, styling_settings
+from . import oidc_claims, parking_lots, parking_spaces, users, email_settings, timezone_settings, logs, reports, backup_settings, dynamic_reports, styling_settings, migrations
 
 router = APIRouter(tags=["admin"])
 
@@ -15,3 +15,4 @@ router.include_router(reports.router)
 router.include_router(backup_settings.router)
 router.include_router(styling_settings.router)
 router.include_router(dynamic_reports.router, prefix="/dynamic-reports", tags=["admin-dynamic-reports"])
+router.include_router(migrations.router)

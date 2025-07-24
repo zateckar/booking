@@ -44,7 +44,7 @@ EXPOSE 8000
 
 # Set environment variables for production
 ENV PYTHONPATH=/app \
-    DATABASE_URL=sqlite:///./data/booking.db
+    DATABASE_URL=sqlite:///app/data/booking.db
 
 # Command to run the application
 CMD ["uv", "run", "python", "run.py"]

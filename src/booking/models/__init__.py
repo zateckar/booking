@@ -24,6 +24,7 @@ from .logs import LogEntry
 from .reports import DynamicReportTemplate, ReportColumn, ReportTemplate
 from .scheduled_reports import ScheduledDynamicReport
 from .styling import StylingSettings
+from .migration import SchemaMigration
 
 # Add alias for backward compatibility
 ApplicationLog = LogEntry
@@ -67,4 +68,7 @@ __all__ = [
     "ReportColumn",
     "ReportTemplate",
     "ScheduledDynamicReport",
+    
+    # Migration models
+    "SchemaMigration",
 ]

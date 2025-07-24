@@ -8,7 +8,7 @@ class Booking(BaseModel):
     __tablename__ = "bookings"
 
     space_id = Column(Integer, ForeignKey("parking_spaces.id", ondelete="SET NULL"), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     start_time = Column(TimezoneAwareDateTime)
     end_time = Column(TimezoneAwareDateTime)
     license_plate = Column(String)

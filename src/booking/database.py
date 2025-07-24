@@ -4,7 +4,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./booking.db"
+# Use the mounted volume directory for database persistence
+# Check if DATABASE_URL is set in environment, otherwise use default path
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app/data/booking.db")
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
@@ -77,6 +79,50 @@ def create_initial_admin_user():
 
 
 def create_db_and_tables():
-    """Create database tables and initial admin user"""
+    """Create database tables, run migrations, and create initial admin user"""
+    # First, create base tables if they don't exist
     Base.metadata.create_all(bind=engine)
+    
+    # Run any pending migrations and check schema compatibility
+    from .migrations.runner import run_migrations, MigrationRunner
+    from .migrations.schema_version import SchemaVersionManager
+    
+    try:
+        print("🔍 Checking database schema compatibility...")
+        
+        # Check schema requirements
+        runner = MigrationRunner()
+        is_compatible, message, details = runner.check_schema_compatibility()
+        
+        if not is_compatible:
+            print(f"⚠️  Schema compatibility check: {message}")
+            print(f"   Current version: {details.get('current_version', 'unknown')}")
+            print(f"   Required version: {details.get('required_version')}")
+            
+            if details.get('issue') == 'database_not_initialized':
+                print("🔧 Database not initialized. Running migrations...")
+            elif details.get('issue') == 'failed_migrations':
+                print("❌ Database has failed migrations. Manual intervention required.")
+                return
+            else:
+                print("🔧 Running migrations to update schema...")
+        
+        # Run pending migrations
+        print("🔍 Checking for pending migrations...")
+        if not run_migrations():
+            print("⚠️  Some migrations failed. Please check the logs.")
+            return
+        
+        # Verify schema compatibility after migrations
+        is_compatible, message, details = runner.check_schema_compatibility()
+        if is_compatible:
+            print(f"✅ Database schema is compatible: {message}")
+        else:
+            print(f"❌ Database schema compatibility issue: {message}")
+            print("⚠️  Application may not function correctly!")
+            
+    except Exception as e:
+        print(f"⚠️  Migration check failed: {e}")
+    
+    # Create initial admin user after migrations
     create_initial_admin_user()
