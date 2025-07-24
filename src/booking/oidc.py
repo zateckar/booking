@@ -36,29 +36,142 @@ async def fix_duplicate_jwks(jwks_url: str) -> Dict[str, Any]:
             # Track seen key IDs and fix duplicates
             seen_kids = {}
             fixed_keys = []
+            duplicate_count = 0
             
             for i, key in enumerate(jwks['keys']):
                 kid = key.get('kid')
                 use = key.get('use', 'unknown')
+                alg = key.get('alg', 'unknown')
                 
                 if kid:
                     if kid in seen_kids:
-                        # Duplicate kid found - make it unique by adding use suffix
+                        # Duplicate kid found - make it unique by adding use and algorithm suffix
                         original_kid = kid
-                        new_kid = f"{kid}_{use}"
+                        new_kid = f"{kid}_{use}_{alg}"
                         key['kid'] = new_kid
-                        logger.info(f"Fixed duplicate JWKS key ID: {original_kid} -> {new_kid} (use: {use})")
+                        duplicate_count += 1
+                        logger.info(f"Fixed duplicate JWKS key ID: {original_kid} -> {new_kid} (use: {use}, alg: {alg})")
                     else:
                         seen_kids[kid] = True
-                
+                        
+                # Validate key has required fields
+                if not key.get('kty'):
+                    logger.warning(f"JWKS key missing 'kty' field: {key}")
+                    continue
+                    
                 fixed_keys.append(key)
             
             jwks['keys'] = fixed_keys
-            logger.info(f"Fixed JWKS with {len(fixed_keys)} keys from {jwks_url}")
+            logger.info(f"Fixed JWKS with {len(fixed_keys)} keys from {jwks_url} (fixed {duplicate_count} duplicates)")
             return jwks
             
     except Exception as e:
         logger.error(f"Failed to fix JWKS from {jwks_url}: {e}")
+        raise e
+
+
+async def validate_and_fix_jwks(jwks_url: str) -> Dict[str, Any]:
+    """
+    Enhanced JWKS validation and fixing function that handles various JWKS issues
+    including duplicate keys, missing fields, and format problems.
+    """
+    try:
+        logger.info(f"Validating and fixing JWKS from: {jwks_url}")
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(jwks_url)
+            response.raise_for_status()
+            
+            # Log raw response for debugging
+            raw_content = response.text
+            logger.debug(f"Raw JWKS response (first 500 chars): {raw_content[:500]}")
+            
+            try:
+                jwks = response.json()
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in JWKS response: {e}")
+                raise ValueError(f"JWKS response is not valid JSON: {e}")
+            
+            if not isinstance(jwks, dict):
+                logger.error(f"JWKS response is not a JSON object: {type(jwks)}")
+                raise ValueError("JWKS response must be a JSON object")
+                
+            if 'keys' not in jwks:
+                logger.error("JWKS response missing 'keys' field")
+                raise ValueError("JWKS response missing 'keys' field")
+                
+            if not isinstance(jwks['keys'], list):
+                logger.error(f"JWKS 'keys' field is not an array: {type(jwks['keys'])}")
+                raise ValueError("JWKS 'keys' field must be an array")
+            
+            # Track issues and fixes
+            issues_found = []
+            seen_kids = {}
+            fixed_keys = []
+            
+            for i, key in enumerate(jwks['keys']):
+                if not isinstance(key, dict):
+                    issues_found.append(f"Key {i} is not an object")
+                    continue
+                
+                # Check required fields
+                missing_fields = []
+                for required_field in ['kty', 'kid']:
+                    if not key.get(required_field):
+                        missing_fields.append(required_field)
+                
+                if missing_fields:
+                    issues_found.append(f"Key {i} missing required fields: {missing_fields}")
+                    logger.warning(f"Skipping JWKS key {i} due to missing fields: {missing_fields}")
+                    continue
+                
+                kid = key.get('kid')
+                use = key.get('use', 'unknown')
+                alg = key.get('alg', 'unknown')
+                kty = key.get('kty')
+                
+                # Handle duplicate kid
+                if kid in seen_kids:
+                    original_kid = kid
+                    new_kid = f"{kid}_{use}_{alg}"
+                    key = key.copy()  # Don't modify original
+                    key['kid'] = new_kid
+                    issues_found.append(f"Duplicate kid '{original_kid}' fixed to '{new_kid}'")
+                    logger.info(f"Fixed duplicate JWKS key ID: {original_kid} -> {new_kid} (use: {use}, alg: {alg})")
+                
+                seen_kids[kid] = True
+                
+                # Validate key type specific fields
+                if kty == 'RSA':
+                    required_rsa_fields = ['n', 'e']
+                    missing_rsa = [f for f in required_rsa_fields if not key.get(f)]
+                    if missing_rsa:
+                        issues_found.append(f"RSA key {kid} missing fields: {missing_rsa}")
+                        logger.warning(f"RSA key {kid} missing required fields: {missing_rsa}")
+                        continue
+                elif kty == 'EC':
+                    required_ec_fields = ['x', 'y', 'crv']
+                    missing_ec = [f for f in required_ec_fields if not key.get(f)]
+                    if missing_ec:
+                        issues_found.append(f"EC key {kid} missing fields: {missing_ec}")
+                        logger.warning(f"EC key {kid} missing required fields: {missing_ec}")
+                        continue
+                
+                fixed_keys.append(key)
+            
+            if not fixed_keys:
+                raise ValueError("No valid keys found in JWKS after validation")
+            
+            fixed_jwks = {'keys': fixed_keys}
+            
+            if issues_found:
+                logger.warning(f"JWKS validation found {len(issues_found)} issues: {issues_found}")
+            
+            logger.info(f"JWKS validation complete: {len(fixed_keys)} valid keys, {len(issues_found)} issues fixed")
+            return fixed_jwks
+            
+    except Exception as e:
+        logger.error(f"Failed to validate and fix JWKS from {jwks_url}: {e}")
         raise e
 
 
@@ -153,19 +266,21 @@ async def process_auth_response(request: Request, provider_name: str):
         if client is None:
             raise ValueError(f"Failed to register OAuth client for provider '{provider.issuer}'")
         
-        # Get the authorization token with error handling for key validation issues
+        # Get the authorization token with enhanced error handling for JWKS validation issues
         try:
             token = await client.authorize_access_token(request)
         except Exception as token_error:
             error_msg = str(token_error).lower()
             
-            # Check for JWKS validation errors (like duplicate key IDs)
+            # Check for JWKS validation errors (like duplicate key IDs, invalid format, etc.)
             if ("invalid json web key set" in error_msg or 
                 "jwks" in error_msg or 
-                "duplicate" in error_msg and "key" in error_msg):
+                "duplicate" in error_msg and "key" in error_msg or
+                "json web key" in error_msg or
+                "key set" in error_msg):
                 
                 logger.warning(f"JWKS validation error detected: {str(token_error)}")
-                logger.info("Attempting to fix JWKS with duplicate key IDs...")
+                logger.info("Attempting to validate and fix JWKS issues...")
                 
                 try:
                     # Get the well-known configuration to find the JWKS URL
@@ -176,32 +291,64 @@ async def process_auth_response(request: Request, provider_name: str):
                         jwks_uri = well_known.get('jwks_uri')
                         
                         if jwks_uri:
-                            # Fix the JWKS and create a custom client
-                            logger.info(f"Fixing JWKS from: {jwks_uri}")
-                            fixed_jwks = await fix_duplicate_jwks(jwks_uri)
+                            # Use enhanced JWKS validation and fixing
+                            logger.info(f"Validating and fixing JWKS from: {jwks_uri}")
+                            fixed_jwks = await validate_and_fix_jwks(jwks_uri)
                             
-                            # Register client with custom JWKS
+                            # Register client with custom fixed JWKS
                             oauth.register(
-                                name=f"{provider.issuer}_fixed_jwks",
+                                name=f"{provider.issuer}_validated_jwks",
                                 client_id=provider.client_id,
                                 client_secret=provider.client_secret,
                                 server_metadata_url=provider.well_known_url,
                                 client_kwargs={
                                     "scope": provider.scopes
                                 },
-                                jwks=fixed_jwks  # Use our fixed JWKS
+                                jwks=fixed_jwks  # Use our validated and fixed JWKS
                             )
                             
-                            fixed_client = oauth._clients[f"{provider.issuer}_fixed_jwks"]
+                            fixed_client = oauth._clients[f"{provider.issuer}_validated_jwks"]
                             token = await fixed_client.authorize_access_token(request)
-                            logger.info("Successfully authenticated using fixed JWKS")
+                            logger.info("Successfully authenticated using validated and fixed JWKS")
                         else:
                             logger.error("No jwks_uri found in well-known configuration")
                             raise token_error
                             
                 except Exception as jwks_fix_error:
-                    logger.error(f"Failed to fix JWKS validation error: {jwks_fix_error}")
-                    raise token_error
+                    logger.error(f"Failed to validate and fix JWKS: {jwks_fix_error}")
+                    
+                    # Try the simpler fix as fallback
+                    logger.info("Attempting simple JWKS duplicate key fix as fallback...")
+                    try:
+                        async with httpx.AsyncClient() as http_client:
+                            resp = await http_client.get(provider.well_known_url)
+                            resp.raise_for_status()
+                            well_known = resp.json()
+                            jwks_uri = well_known.get('jwks_uri')
+                            
+                            if jwks_uri:
+                                fixed_jwks = await fix_duplicate_jwks(jwks_uri)
+                                
+                                # Register client with simple fix
+                                oauth.register(
+                                    name=f"{provider.issuer}_simple_fix",
+                                    client_id=provider.client_id,
+                                    client_secret=provider.client_secret,
+                                    server_metadata_url=provider.well_known_url,
+                                    client_kwargs={
+                                        "scope": provider.scopes
+                                    },
+                                    jwks=fixed_jwks
+                                )
+                                
+                                simple_client = oauth._clients[f"{provider.issuer}_simple_fix"]
+                                token = await simple_client.authorize_access_token(request)
+                                logger.info("Successfully authenticated using simple JWKS fix")
+                            else:
+                                raise token_error
+                    except Exception as simple_fix_error:
+                        logger.error(f"Simple JWKS fix also failed: {simple_fix_error}")
+                        raise token_error
                     
             elif "use" in error_msg and "not valid" in error_msg:
                 logger.warning(f"JWT key validation issue detected: {str(token_error)}")
