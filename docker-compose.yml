@@ -2,34 +2,15 @@ version: '3.8'
 
 services:
   booking-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/zateckar/booking:latest
     ports:
       - "8000:8000"
-    environment:
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - DEBUG=${DEBUG:-false}
-      - DATABASE_URL=sqlite:///./data/booking.db
-      - DEFAULT_TIMEZONE=${DEFAULT_TIMEZONE:-UTC}
-      # OIDC Configuration (Optional)
-      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
-      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
-      - OIDC_ISSUER=${OIDC_ISSUER:-}
-      # Email Configuration (Optional - SendGrid)
-      - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
-      - FROM_EMAIL=${FROM_EMAIL:-}
-      - FROM_NAME=${FROM_NAME:-Booking System}
     volumes:
       - booking_data:/app/data
       - booking_logs:/app/logs
-      # Mount source code for development (optional - comment out for production-like testing)
-      # - ./src:/app/src
-      # - ./static:/app/static
-      # - ./templates:/app/templates
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/oidc/providers"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/login"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -37,51 +18,11 @@ services:
     networks:
       - booking-network
 
-  # Optional: Add a reverse proxy for production-like setup
-  # nginx:
-  #   image: nginx:alpine
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
-  #     - ./ssl:/etc/nginx/ssl:ro
-  #   depends_on:
-  #     - booking-app
-  #   networks:
-  #     - booking-network
-
-  # Optional: Add PostgreSQL for production-like database testing
-  # postgres:
-  #   image: postgres:15-alpine
-  #   environment:
-  #     - POSTGRES_DB=booking
-  #     - POSTGRES_USER=booking_user
-  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-booking_password}
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   networks:
-  #     - booking-network
-
-  # Optional: Add Redis for caching/session storage
-  # redis:
-  #   image: redis:7-alpine
-  #   volumes:
-  #     - redis_data:/data
-  #   networks:
-  #     - booking-network
-
 volumes:
   booking_data:
     driver: local
   booking_logs:
     driver: local
-  # postgres_data:
-  #   driver: local
-  # redis_data:
-  #   driver: local
 
 networks:
   booking-network:
