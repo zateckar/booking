@@ -31,19 +31,16 @@ RUN uv sync --frozen --no-dev
 # Copy remaining application code
 COPY . .
 
-# Create directories for data persistence
+# Create directories for data persistence and fix UV cache permissions
 RUN mkdir -p /app/data /app/logs && \
-    chown -R appuser:appuser /app
+    mkdir -p /tmp/uv-cache && \
+    chown -R appuser:appuser /app /tmp/uv-cache
 
 # Create a non-root user for running the application
 USER appuser
 
 # Expose port
 EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/oidc/providers || exit 1
 
 # Set environment variables for production
 ENV PYTHONPATH=/app \
