@@ -1,0 +1,139 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+build
+develop-eggs
+dist
+downloads
+eggs
+.eggs
+lib
+lib64
+parts
+sdist
+var
+wheels
+*.egg-info
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv
+env
+ENV
+env.bak
+venv.bak
+.venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+docs
+
+# Test files
+test_*
+*_test.py
+tests/
+.pytest_cache
+.coverage
+htmlcov
+
+# Database files (will be created in container)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+backup_*
+
+# Excel files (reports will be generated in container)
+*.xlsx
+*.xls
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose*.yml
+!docker-compose.yml
+Dockerfile*
+.dockerignore
+
+# Migration and test scripts
+migrate_*.py
+check_*.py
+monitor_*.py
+run_scheduler.py
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Node modules (if any)
+node_modules/
+
+# Coverage reports
+.coverage
+coverage.xml
+*.cover
+.hypothesis
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# UV
+.uv-cache
+
+# Lock files (included in COPY but listed here for clarity)
+# uv.lock will be copied explicitly in Dockerfile
+
+# Development artifacts
+*.md
+!README.md
+ADDITIONAL_*
+*_SUMMARY.md
+*_IMPLEMENTATION.md
+*_SETUP.md
+*_FIX.md
+*_FIXES.md
+*_UPDATE.md
+
+# Runtime directories that will be created
+data/
+static/uploads/

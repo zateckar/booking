@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-96x96.png">
+
+    <title>{% block title %}Booking{% endblock %}</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <script src="/static/js/fabric.min.js"></script>
+    
+    <!-- Google Fonts for emoji support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+    
+    <!-- Dynamic styling from admin settings -->
+    <link rel="stylesheet" href="/api/admin/styling-settings/dynamic-styles.css">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light" id="header" style="display: none;">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#" id="navbar-brand">
+                <img id="navbar-logo" src="" alt="" style="display: none;" class="me-2">
+                <span id="navbar-brand-text">Booking</span>
+            </a>
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" href="#" id="user-mode-link">My Bookings</a>
+                <a class="nav-link" href="#" id="admin-mode-link" style="display: none;">Admin</a>
+            </div>
+            <span class="navbar-text me-3" id="user-email"></span>
+            <button class="btn btn-outline-secondary btn-sm" id="logout-link">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% include 'modals.html' %}
+
+    <!-- JavaScript Libraries -->
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Application JavaScript Modules -->
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/booking.js"></script>
+    <script src="/static/js/admin.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

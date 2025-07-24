@@ -1,0 +1,1694 @@
+{% extends "base.html" %}
+
+{% block content %}
+        <div id="login-form-container">
+            <div class="text-center mt-5">
+                <img id="login-logo" src="" alt="" style="display: none;" class="login-logo">
+                <h1 id="login-title">Booking</h1>
+            </div>
+            <form id="login-form" class="mx-auto" style="max-width: 400px;">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+            <div id="oidc-login-buttons" class="text-center mt-3"></div>
+        </div>
+
+        <div id="main-content" style="display: none;">
+            <!-- User View -->
+            <div id="user-view">
+                <h4 class="mt-4">My Bookings</h4>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" role="switch" id="show-all-bookings-toggle">
+                    <label class="form-check-label" for="show-all-bookings-toggle">Show all my bookings including past and canceled</label>
+                </div>
+
+                <table class="table desktop-table">
+                    <thead>
+                        <tr>
+                            <th>Space</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>License Plate</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-table-body"></tbody>
+                </table>
+
+                <div id="bookings-mobile-cards" class="mobile-only"></div>
+            </div>
+
+            <!-- User Booking View -->
+            <div id="user-booking-view" class="mt-4">
+                <h4 id="user-lot-name-header">Select a Parking Lot</h4>
+                <div class="form-row-mobile mb-3">
+                    <div class="mobile-form-group">
+                        <label for="user-parking-lots-list" class="form-label">Booking Area</label>
+                        <select id="user-parking-lots-list" class="form-select"></select>
+                    </div>
+                    <div class="mobile-form-group">
+                        <label for="availability-start-time" class="form-label">Show availability from</label>
+                        <div class="input-group">
+                            <button class="btn btn-outline-secondary" type="button" id="date-prev-btn" title="Previous day">&lt;</button>
+                            <input type="datetime-local" class="form-control" id="availability-start-time">
+                            <button class="btn btn-outline-secondary" type="button" id="date-next-btn" title="Next day">&gt;</button>
+                        </div>
+                    </div>
+                    <div class="mobile-form-group">
+                        <label for="availability-end-time" class="form-label">to</label>
+                        <input type="datetime-local" class="form-control" id="availability-end-time">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 canvas-container">
+                        <canvas id="user-canvas" class="border"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin View -->
+            <div id="admin-view" style="display: none;" class="mt-4">
+                <h2>Admin Panel</h2>
+                
+                <!-- Admin Navigation Tabs -->
+                <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard-pane" type="button" role="tab">📊 Dashboard</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button" role="tab">👥 Users</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="oidc-claims-tab" data-bs-toggle="tab" data-bs-target="#oidc-claims-pane" type="button" role="tab">🔐 OIDC & Claims</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="parking-lots-tab" data-bs-toggle="tab" data-bs-target="#parking-lots-pane" type="button" role="tab">🏢 Parking Lots</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="parking-spaces-tab" data-bs-toggle="tab" data-bs-target="#parking-spaces-pane" type="button" role="tab">🚗 Parking Spaces</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs-pane" type="button" role="tab">📋 Logs</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports-pane" type="button" role="tab">📈 Reports</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="dynamic-reports-tab" data-bs-toggle="tab" data-bs-target="#dynamic-reports-pane" type="button" role="tab">📊 Dynamic Reports</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="branding-tab" data-bs-toggle="tab" data-bs-target="#branding-pane" type="button" role="tab">🎨 Branding</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system-pane" type="button" role="tab">⚙️ System</button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="adminTabContent">
+                    
+                    <!-- Dashboard -->
+                    <div class="tab-pane fade show active" id="dashboard-pane" role="tabpanel">
+                        <div class="row mt-3">
+                            <!-- Dashboard Header -->
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <div>
+                                        <h3 class="mb-1">Dashboard</h3>
+                                        <p class="text-muted mb-0">Overview of your parking booking system</p>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <select class="form-select form-select-sm" id="dashboard-period-filter" style="width: auto;">
+                                            <option value="1">Current Month</option>
+                                            <option value="0">Last Month</option>
+                                            <option value="2" selected>Last 2 Months</option>
+                                            <option value="3">Last 3 Months</option>
+                                            <option value="6">Last 6 Months</option>
+                                        </select>
+                                        <button class="btn btn-outline-primary btn-sm" id="dashboard-refresh-btn">Refresh</button>
+                                        <button class="btn btn-outline-success btn-sm" onclick="AdminDashboard.exportDashboard()">Export</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loading Indicator -->
+                        <div id="dashboard-loading" class="text-center py-4" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div class="mt-2">Loading dashboard data...</div>
+                        </div>
+
+                        <!-- Summary Cards Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 mb-3">
+                                <dashboard-card 
+                                    id="total-bookings-card"
+                                    title="Total Bookings" 
+                                    value="0" 
+                                    color="primary"
+                                    icon="📅"
+                                    subtitle="All bookings in period">
+                                </dashboard-card>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <dashboard-card 
+                                    id="unique-users-card"
+                                    title="Active Users" 
+                                    value="0" 
+                                    color="success"
+                                    icon="👥"
+                                    subtitle="Unique users who booked">
+                                </dashboard-card>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <dashboard-card 
+                                    id="total-hours-card"
+                                    title="Total Hours" 
+                                    value="0" 
+                                    color="info"
+                                    icon="⏰"
+                                    subtitle="Total parking hours">
+                                </dashboard-card>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <dashboard-card 
+                                    id="avg-duration-card"
+                                    title="Avg Duration" 
+                                    value="0" 
+                                    color="warning"
+                                    icon="⏱️"
+                                    subtitle="Hours per booking">
+                                </dashboard-card>
+                            </div>
+                        </div>
+
+                        <!-- Charts Row -->
+                        <div class="row mb-4">
+                            <div class="col-lg-6 mb-3">
+                                <dashboard-chart 
+                                    id="user-activity-chart"
+                                    title="Top Active Users" 
+                                    type="bar" 
+                                    height="350px">
+                                </dashboard-chart>
+                            </div>
+                            <div class="col-lg-6 mb-3">
+                                <dashboard-chart 
+                                    id="parking-lot-usage-chart"
+                                    title="Parking Lot Usage" 
+                                    type="pie" 
+                                    height="350px">
+                                </dashboard-chart>
+                            </div>
+                        </div>
+
+                        <!-- Activity Feed and Stats Row -->
+                        <div class="row mb-4">
+                            <div class="col-lg-8 mb-3">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">Monthly Trends</h5>
+                                    </div>
+                                    <div class="card-body p-2">
+                                        <dashboard-chart 
+                                            id="monthly-trends-chart"
+                                            title="Bookings by Month" 
+                                            type="line" 
+                                            height="300px">
+                                        </dashboard-chart>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <!-- Recent Activity -->
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Recent Activity</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="dashboard-activity-feed" style="max-height: 150px; overflow-y: auto;">
+                                            <div class="text-center text-muted py-3">Loading activity...</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Stats -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">System Status</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="dashboard-quick-stats">
+                                            <div class="text-center text-muted py-3">Loading status...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer Info -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="alert alert-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>Dashboard Information:</strong> 
+                                            Data is automatically refreshed every 5 minutes. Last update: <span id="dashboard-last-refresh">Never</span>
+                                        </div>
+                                        <div class="text-muted small">
+                                            Built with Web Components for better performance
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Management -->
+                    <div class="tab-pane fade" id="users-pane" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5>User Management</h5>
+                                <div>
+                                    <button class="btn btn-success btn-sm me-2" id="add-user-btn">Add User</button>
+                                    <button class="btn btn-primary btn-sm" id="refresh-users-btn">Refresh</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Email</th>
+                                                <th>Admin</th>
+                                                <th>Bookings</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="users-table-body">
+                                            <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OIDC & Claims Management -->
+                    <div class="tab-pane fade" id="oidc-claims-pane" role="tabpanel">
+                        <div class="row mt-3">
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-body p-0">
+                                        <oidc-provider-manager></oidc-provider-manager>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-body p-0">
+                                        <claims-mapping-manager></claims-mapping-manager>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Parking Lots -->
+                    <div class="tab-pane fade" id="parking-lots-pane" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5>Parking Lots Management</h5>
+                                <div>
+                                    <button class="btn btn-success btn-sm me-2" id="add-parking-lot-btn">Add Parking Lot</button>
+                                    <button class="btn btn-primary btn-sm" id="refresh-parking-lots-btn">Refresh</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Name</th>
+                                                <th>Image</th>
+                                                <th>Spaces</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="parking-lots-admin-table-body">
+                                            <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Parking Spaces -->
+                    <div class="tab-pane fade" id="parking-spaces-pane" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5>Parking Spaces Visual Manager</h5>
+                                <div>
+                                    <select class="form-select form-select-sm d-inline-block w-auto me-2" id="spaces-lot-filter">
+                                        <option value="">Select Parking Lot</option>
+                                    </select>
+                                    <button class="btn btn-primary btn-sm me-2" disabled id="refresh-spaces-btn">Refresh</button>
+                                    <button class="btn btn-success btn-sm" id="admin-save-all-btn">Save</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="no-lot-selected" class="text-center text-muted">
+                                    <p>Please select a parking lot to manage spaces visually.</p>
+                                </div>
+                                <div id="spaces-content" style="display: none;">
+                                    
+                                    <!-- Visual Mode Interface -->
+                                    <div id="visual-interface">
+                                        <!-- Canvas Container -->
+                                        <div class="canvas-container mb-3" id="admin-canvas-container">
+                                            <canvas id="admin-parking-canvas"></canvas>
+                                        </div>
+
+                                        <!-- Space Properties Panel -->
+                                        <div id="admin-space-properties" class="space-properties" style="display: none;">
+                                            <h6>Space Properties</h6>
+                                            <div class="row">
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Space Number</label>
+                                                    <input type="text" class="form-control" id="admin-space-number" placeholder="e.g., A-01">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Width</label>
+                                                    <input type="number" class="form-control" id="admin-space-width" value="100" min="50" max="200">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Height</label>
+                                                    <input type="number" class="form-control" id="admin-space-height" value="60" min="30" max="120">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Color</label>
+                                                    <input type="color" class="form-control" id="admin-space-color" value="#28a745">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Actions</label>
+                                                    <div>
+                                                        <button class="btn btn-success btn-sm" id="admin-apply-properties">Apply</button>
+                                                        <button class="btn btn-secondary btn-sm" id="admin-cancel-properties">Cancel</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Status Panel -->
+                                        <div id="admin-status-panel" class="mt-3">
+                                            <div class="alert alert-secondary" id="admin-status-message">
+                                                Ready for visual editing.
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+
+
+                    <!-- Logs -->
+                    <div class="tab-pane fade" id="logs-pane" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5>Application Logs</h5>
+                                <div>
+                                    <input type="datetime-local" class="form-control form-control-sm d-inline-block w-auto me-2" id="log-start-date" placeholder="Start Date">
+                                    <input type="datetime-local" class="form-control form-control-sm d-inline-block w-auto me-2" id="log-end-date" placeholder="End Date">
+                                    <select class="form-select form-select-sm d-inline-block w-auto me-2" id="log-level-filter">
+                                        <option value="">All Levels</option>
+                                        <option value="CRITICAL">Critical</option>
+                                        <option value="ERROR">Error</option>
+                                        <option value="WARNING">Warning</option>
+                                        <option value="INFO">Info</option>
+                                        <option value="DEBUG">Debug</option>
+                                    </select>
+                                    <select class="form-select form-select-sm d-inline-block w-auto me-2" id="log-logger-filter">
+                                        <option value="">All Loggers</option>
+                                    </select>
+                                    <button class="btn btn-primary btn-sm" id="refresh-logs-btn">Refresh</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Level</th>
+                                                <th>Logger</th>
+                                                <th>Message</th>
+                                                <th>User</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="logs-table-body">
+                                            <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Dynamic Reports -->
+                    <div class="tab-pane fade" id="dynamic-reports-pane" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5>Dynamic Reports</h5>
+                                <div>
+                                    <button class="btn btn-success btn-sm me-2" id="save-report-template-btn">Save Template</button>
+                                    <button class="btn btn-primary btn-sm" id="refresh-dynamic-reports-btn">Refresh</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <strong>Dynamic Reports:</strong> Generate custom reports with configurable columns. 
+                                    Include both static user data (bookings, hours) and mapped claims data (department, employee info).
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="alert alert-success d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>Quick Send:</strong> Send reports via email with one simple form - ad-hoc, scheduled, or test sending all in one place!
+                                    </div>
+                                    <button class="btn btn-success btn-sm" onclick="AdminDynamicReports.showSendEmailModal()">
+                                        Send Report
+                                    </button>
+                                </div>
+
+                                <!-- Dynamic Reports Tabs -->
+                                <ul class="nav nav-pills mb-3" id="dynamicReportsTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="generate-tab" data-bs-toggle="pill" data-bs-target="#generate-dynamic" type="button" role="tab">Generate Reports</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="email-dynamic-tab" data-bs-toggle="pill" data-bs-target="#email-dynamic" type="button" role="tab">Email & Scheduling</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="scheduled-reports-tab" data-bs-toggle="pill" data-bs-target="#scheduled-reports" type="button" role="tab">๐�“… Scheduled Reports</button>
+                                    </li>
+                                </ul>
+
+                                <!-- Tab Content -->
+                                <div class="tab-content" id="dynamicReportsTabContent">
+                                    <!-- Generate Reports -->
+                                    <div class="tab-pane fade show active" id="generate-dynamic" role="tabpanel">
+                                        <!-- Report Configuration -->
+                                        <div class="row mb-4">
+                                            <div class="col-md-8">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Configure Report Columns</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="row">
+                                                            <div class="col-md-6">
+                                                                <h6>Available Columns</h6>
+                                                                <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
+                                                                    <div id="available-columns-list">
+                                                                        <p class="text-muted">Loading available columns...</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <h6>Selected Columns</h6>
+                                                                <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
+                                                                    <div id="selected-columns-list">
+                                                                        <p class="text-muted">No columns selected</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-3">
+                                                            <div class="row">
+                                                                <div class="col-md-3">
+                                                                    <label class="form-label">Report Period (months)</label>
+                                                                    <select class="form-select" id="dynamic-report-months">
+                                                                        <option value="1">Current Month</option>
+                                                                        <option value="0">Last Month</option>
+                                                                        <option value="2" selected>Last 2 Months</option>
+                                                                        <option value="3">Last 3 Months</option>
+                                                                        <option value="6">Last 6 Months</option>
+                                                                        <option value="12">Last 12 Months</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="col-md-9">
+                                                                    <label class="form-label">Actions</label><br>
+                                                                    <button class="btn btn-primary me-2" id="generate-dynamic-report-btn">Generate Report</button>
+                                                                    <button class="btn btn-success me-2" id="download-dynamic-report-excel-btn">Download Excel</button>
+                                                                    <button class="btn btn-secondary" id="clear-selected-columns-btn">Clear Selection</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Report Templates</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div id="report-templates-list">
+                                                            <p class="text-muted">Loading templates...</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Report Results -->
+                                        <div id="dynamic-report-results" style="display: none;">
+                                            <div class="card">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <h6>Report Results</h6>
+                                                    <span id="dynamic-report-summary" class="badge bg-primary"></span>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                                        <table class="table table-striped">
+                                                            <thead id="dynamic-report-headers">
+                                                                <!-- Headers will be populated dynamically -->
+                                                            </thead>
+                                                            <tbody id="dynamic-report-data">
+                                                                <!-- Data will be populated dynamically -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Email & Scheduling -->
+                                    <div class="tab-pane fade" id="email-dynamic" role="tabpanel">
+                                        <div class="row">
+                                            <!-- Unified Email Interface -->
+                                            <div class="col-md-8">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Send Dynamic Report</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <form id="unified-email-form">
+                                                            <!-- Template Selection -->
+                                                            <div class="mb-3">
+                                                                <label class="form-label">Report Template <span class="text-danger">*</span></label>
+                                                                <select class="form-select" id="unified-template-id" required>
+                                                                    <option value="">Select a template...</option>
+                                                                </select>
+                                                                <div class="form-text">Choose which report template to use</div>
+                                                            </div>
+
+                                                            <!-- Sending Method -->
+                                                            <div class="mb-3">
+                                                                <label class="form-label">Sending Method</label>
+                                                                <div class="row">
+                                                                    <div class="col-md-4">
+                                                                        <div class="form-check">
+                                                                            <input class="form-check-input" type="radio" name="sending-method" id="method-send-now" value="send_now" checked>
+                                                                            <label class="form-check-label" for="method-send-now">
+                                                                                Send Now
+                                                                            </label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-4">
+                                                                        <div class="form-check">
+                                                                            <input class="form-check-input" type="radio" name="sending-method" id="method-schedule" value="schedule">
+                                                                            <label class="form-check-label" for="method-schedule">
+                                                                                Schedule
+                                                                            </label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-4">
+                                                                        <div class="form-check">
+                                                                            <input class="form-check-input" type="radio" name="sending-method" id="method-test" value="test">
+                                                                            <label class="form-check-label" for="method-test">
+                                                                                Send Test
+                                                                            </label>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Recipients Section -->
+                                                            <div id="recipients-section">
+                                                                <!-- Send Now Recipients -->
+                                                                <div class="mb-3" id="send-now-recipients">
+                                                                    <label class="form-label">Recipients <span class="text-danger">*</span></label>
+                                                                    <textarea class="form-control" id="unified-recipients" rows="2" placeholder="user1@example.com, user2@example.com" required></textarea>
+                                                                    <div class="form-text">Enter email addresses separated by commas</div>
+                                                                </div>
+
+                                                                <!-- Test Email Recipient -->
+                                                                <div class="mb-3" id="test-email-recipient" style="display: none;">
+                                                                    <label class="form-label">Test Email Address <span class="text-danger">*</span></label>
+                                                                    <input type="email" class="form-control" id="unified-test-email" placeholder="test@example.com">
+                                                                    <div class="form-text">Single email address for testing</div>
+                                                                </div>
+
+                                                                <!-- Schedule Recipients -->
+                                                                <div class="mb-3" id="schedule-recipients" style="display: none;">
+                                                                    <label class="form-label">Scheduled Recipients <span class="text-danger">*</span></label>
+                                                                    <textarea class="form-control" id="unified-schedule-recipients" rows="2" placeholder="admin@example.com, manager@example.com"></textarea>
+                                                                    <div class="form-text">Recipients for scheduled reports</div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Report Settings (for Send Now and Test) -->
+                                                            <div id="report-settings-section">
+                                                                <div class="row">
+                                                                    <div class="col-md-6">
+                                                                        <div class="mb-3">
+                                                                            <label class="form-label">Report Period</label>
+                                                                            <select class="form-select" id="unified-report-months">
+                                                                                <option value="1">Current Month</option>
+                                                                                <option value="0">Last Month</option>
+                                                                                <option value="2" selected>Last 2 Months</option>
+                                                                                <option value="3">Last 3 Months</option>
+                                                                                <option value="6">Last 6 Months</option>
+                                                                                <option value="12">Last 12 Months</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-6">
+                                                                        <div class="mb-3">
+                                                                            <div class="form-check form-switch mt-4">
+                                                                                <input class="form-check-input" type="checkbox" id="unified-include-excel" checked>
+                                                                                <label class="form-check-label">Include Excel Attachment</label>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Schedule Settings -->
+                                                            <div id="schedule-settings-section" style="display: none;">
+                                                                <div class="mb-3">
+                                                                    <div class="form-check form-switch">
+                                                                        <input class="form-check-input" type="checkbox" id="unified-schedule-enabled">
+                                                                        <label class="form-check-label">Enable Scheduled Reports</label>
+                                                                    </div>
+                                                                    <div class="form-text">Enable automatic report sending</div>
+                                                                </div>
+                                                                <div class="row">
+                                                                    <div class="col-md-4">
+                                                                        <div class="mb-3">
+                                                                            <label class="form-label">Frequency</label>
+                                                                            <select class="form-select" id="unified-schedule-frequency">
+                                                                                <option value="daily">Daily</option>
+                                                                                <option value="weekly" selected>Weekly</option>
+                                                                                <option value="monthly">Monthly</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-4">
+                                                                        <div class="mb-3">
+                                                                            <label class="form-label">Hour</label>
+                                                                            <select class="form-select" id="unified-schedule-hour">
+                                                                                <option value="0">00:00</option>
+                                                                                <option value="1">01:00</option>
+                                                                                <option value="2">02:00</option>
+                                                                                <option value="3">03:00</option>
+                                                                                <option value="4">04:00</option>
+                                                                                <option value="5">05:00</option>
+                                                                                <option value="6">06:00</option>
+                                                                                <option value="7">07:00</option>
+                                                                                <option value="8">08:00</option>
+                                                                                <option value="9" selected>09:00</option>
+                                                                                <option value="10">10:00</option>
+                                                                                <option value="11">11:00</option>
+                                                                                <option value="12">12:00</option>
+                                                                                <option value="13">13:00</option>
+                                                                                <option value="14">14:00</option>
+                                                                                <option value="15">15:00</option>
+                                                                                <option value="16">16:00</option>
+                                                                                <option value="17">17:00</option>
+                                                                                <option value="18">18:00</option>
+                                                                                <option value="19">19:00</option>
+                                                                                <option value="20">20:00</option>
+                                                                                <option value="21">21:00</option>
+                                                                                <option value="22">22:00</option>
+                                                                                <option value="23">23:00</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-4">
+                                                                        <div class="mb-3">
+                                                                            <label class="form-label">Timezone</label>
+                                                                            <select class="form-select" id="unified-schedule-timezone">
+                                                                                <option value="UTC" selected>UTC</option>
+                                                                                <option value="Europe/Prague">Europe/Prague</option>
+                                                                                <option value="America/New_York">America/New_York</option>
+                                                                                <option value="America/Los_Angeles">America/Los_Angeles</option>
+                                                                                <option value="Asia/Tokyo">Asia/Tokyo</option>
+                                                                                <option value="Europe/London">Europe/London</option>
+                                                                                <option value="Australia/Sydney">Australia/Sydney</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Action Buttons -->
+                                                            <div class="d-flex gap-2">
+                                                                <button type="button" class="btn btn-primary" id="unified-action-btn" onclick="AdminDynamicReports.handleUnifiedEmailAction()">
+                                                                    ๐�“ง Send Now
+                                                                </button>
+                                                                <button type="button" class="btn btn-outline-secondary" onclick="AdminDynamicReports.resetUnifiedForm()">
+                                                                    Reset Form
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Schedule Status and Help -->
+                                            <div class="col-md-4">
+                                                <!-- Schedule Status -->
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Current Schedule Status</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <p class="mb-2"><strong>Status:</strong> <span id="unified-schedule-status" class="badge bg-secondary">Disabled</span></p>
+                                                        <p class="mb-2"><strong>Template:</strong> <span id="unified-schedule-template">None</span></p>
+                                                        <p class="mb-2"><strong>Recipients:</strong> <span id="unified-schedule-recipient-count">0</span></p>
+                                                        <p class="mb-2"><strong>Frequency:</strong> <span id="unified-schedule-freq">-</span></p>
+                                                        <p class="mb-0"><strong>Last sent:</strong> <span id="unified-last-sent">Never</span></p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Quick Help -->
+                                                <div class="card mt-3">
+                                                    <div class="card-header">
+                                                        <h6>Quick Guide</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="small">
+                                                            <p class="mb-2"><strong>Send Now:</strong> Immediately send report to specified recipients</p>
+                                                            <p class="mb-2"><strong>Send Test:</strong> Send a sample report to one email for testing</p>
+                                                            <p class="mb-0"><strong>Schedule:</strong> Set up automatic report delivery</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                </div>
+                                                                  
+
+                            </div>
+
+                        </div>
+                                                      <!-- Scheduled Reports -->
+                                                                <div class="tab-pane fade" id="scheduled-reports" role="tabpanel">
+                                        <div class="row">
+                                            <!-- Scheduled Reports List -->
+                                            <div class="col-md-8">
+                                                <div class="card">
+                                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                                        <h6>Multiple Scheduled Reports</h6>
+                                                        <div>
+                                                            <button class="btn btn-success btn-sm me-2" onclick="AdminDynamicReports.showCreateScheduleModal()">
+                                                                Create Schedule
+                                                            </button>
+                                                            <button class="btn btn-primary btn-sm" onclick="AdminDynamicReports.loadScheduledReports()">
+                                                                Refresh
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div id="scheduled-reports-list">
+                                                            <div class="text-center text-muted py-4">
+                                                                <p>Loading scheduled reports...</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Info Panel -->
+                                            <div class="col-md-4">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Multiple Schedules</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="small">
+                                                            <p class="mb-2"><strong>Benefits:</strong></p>
+                                                            <ul class="mb-3">
+                                                                <li>Different templates for different teams</li>
+                                                                <li>Various frequencies (daily, weekly, monthly)</li>
+                                                                <li>Custom recipient lists per schedule</li>
+                                                                <li>Individual enable/disable control</li>
+                                                            </ul>
+                                                            <p class="mb-2"><strong>Examples:</strong></p>
+                                                            <ul class="mb-0">
+                                                                <li>Daily operational reports for managers</li>
+                                                                <li>Weekly summary for executives</li>
+                                                                <li>Monthly detailed reports for analysis</li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="card mt-3">
+                                                    <div class="card-header">
+                                                        <h6>Quick Actions</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="AdminDynamicReports.enableAllSchedules()">
+                                                            Enable All Schedules
+                                                        </button>
+                                                        <button class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="AdminDynamicReports.disableAllSchedules()">
+                                                            Disable All Schedules
+                                                        </button>
+                                                        <button class="btn btn-outline-info btn-sm w-100" onclick="AdminDynamicReports.testAllSchedules()">
+                                                            Test All Active Schedules
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                    </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reports -->
+                    <div class="tab-pane fade" id="reports-pane" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5>Booking Reports</h5>
+                                <div>
+                                    <select class="form-select form-select-sm d-inline-block w-auto me-2" id="reports-months-filter">
+                                        <option value="1">Current Month</option>
+                                        <option value="0">Last Month</option>
+                                        <option value="2" selected>Last 2 Months</option>
+                                        <option value="3">Last 3 Months</option>
+                                        <option value="6">Last 6 Months</option>
+                                        <option value="12">Last 12 Months</option>
+                                    </select>
+                                    <button class="btn btn-success btn-sm me-2" id="download-excel-report-btn">Download Excel</button>
+                                    <button class="btn btn-info btn-sm me-2" id="send-email-report-btn">Email Report</button>
+                                    <button class="btn btn-primary btn-sm" id="refresh-reports-data-btn">Refresh</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <!-- Period Display -->
+                                <div class="alert alert-info" id="reports-period-display">
+                                    Loading period information...
+                                </div>
+
+                                <!-- Summary Cards -->
+                                <div class="row mb-4" id="reports-summary-cards">
+                                    <div class="col-md-3">
+                                        <div class="card bg-primary text-white">
+                                            <div class="card-body">
+                                                <h5 class="card-title">Total Bookings</h5>
+                                                <h3>Loading...</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-success text-white">
+                                            <div class="card-body">
+                                                <h5 class="card-title">Unique Users</h5>
+                                                <h3>Loading...</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-info text-white">
+                                            <div class="card-body">
+                                                <h5 class="card-title">Total Hours</h5>
+                                                <h3>Loading...</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-warning text-white">
+                                            <div class="card-body">
+                                                <h5 class="card-title">Avg Duration</h5>
+                                                <h3>Loading...</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reports Tabs -->
+                                <ul class="nav nav-pills mb-3" id="reportsTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="user-stats-tab" data-bs-toggle="pill" data-bs-target="#user-stats" type="button" role="tab">User Statistics</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="lot-stats-tab" data-bs-toggle="pill" data-bs-target="#lot-stats" type="button" role="tab">Parking Lot Stats</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="monthly-stats-tab" data-bs-toggle="pill" data-bs-target="#monthly-stats" type="button" role="tab">Monthly Stats</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="schedule-tab" data-bs-toggle="pill" data-bs-target="#schedule-settings" type="button" role="tab">Email Scheduling</button>
+                                    </li>
+                                </ul>
+
+                                <!-- Tab Content -->
+                                <div class="tab-content" id="reportsTabContent">
+                                    <!-- User Statistics -->
+                                    <div class="tab-pane fade show active" id="user-stats" role="tabpanel">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>User Email</th>
+                                                        <th>Total Bookings</th>
+                                                        <th>Total Hours</th>
+                                                        <th>Avg Duration (hrs)</th>
+                                                        <th>Lots Used</th>
+                                                        <th>License Plates</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="user-stats-table-body">
+                                                    <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Parking Lot Statistics -->
+                                    <div class="tab-pane fade" id="lot-stats" role="tabpanel">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Parking Lot</th>
+                                                        <th>Total Bookings</th>
+                                                        <th>Total Hours</th>
+                                                        <th>Avg Duration (hrs)</th>
+                                                        <th>Unique Users</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="lot-stats-table-body">
+                                                    <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Monthly Statistics -->
+                                    <div class="tab-pane fade" id="monthly-stats" role="tabpanel">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Month</th>
+                                                        <th>Total Bookings</th>
+                                                        <th>Total Hours</th>
+                                                        <th>Avg Duration (hrs)</th>
+                                                        <th>Unique Users</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="monthly-stats-table-body">
+                                                    <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Email Scheduling Settings -->
+                                    <div class="tab-pane fade" id="schedule-settings" role="tabpanel">
+                                        <div class="alert alert-info">
+                                            <strong>Note:</strong> Report scheduling uses the global settings configured in the <strong>System</strong> tab. 
+                                            Global reports must be enabled there first.
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Automated Report Scheduling</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="mb-3">
+                                                            <div class="form-check form-switch">
+                                                                <input class="form-check-input" type="checkbox" id="schedule-reports-enabled">
+                                                                <label class="form-check-label">Enable Scheduled Reports</label>
+                                                            </div>
+                                                            <small class="text-muted">Requires global reports to be enabled in Email Settings</small>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Recipients (comma-separated emails)</label>
+                                                            <textarea class="form-control" id="schedule-recipients" rows="2" placeholder="Will use global recipients from Email Settings if empty"></textarea>
+                                                            <small class="text-muted">Leave empty to use default recipients from Email Settings, or specify custom recipients for scheduled reports</small>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Frequency</label>
+                                                                    <select class="form-select" id="schedule-frequency">
+                                                                        <option value="daily">Daily</option>
+                                                                        <option value="weekly">Weekly</option>
+                                                                        <option value="monthly">Monthly</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Hour (24h format)</label>
+                                                                    <select class="form-select" id="schedule-hour">
+                                                                        <option value="0">00:00 (Midnight)</option>
+                                                                        <option value="1">01:00</option>
+                                                                        <option value="2">02:00</option>
+                                                                        <option value="3">03:00</option>
+                                                                        <option value="4">04:00</option>
+                                                                        <option value="5">05:00</option>
+                                                                        <option value="6">06:00</option>
+                                                                        <option value="7">07:00</option>
+                                                                        <option value="8">08:00</option>
+                                                                        <option value="9" selected>09:00</option>
+                                                                        <option value="10">10:00</option>
+                                                                        <option value="11">11:00</option>
+                                                                        <option value="12">12:00 (Noon)</option>
+                                                                        <option value="13">13:00</option>
+                                                                        <option value="14">14:00</option>
+                                                                        <option value="15">15:00</option>
+                                                                        <option value="16">16:00</option>
+                                                                        <option value="17">17:00</option>
+                                                                        <option value="18">18:00</option>
+                                                                        <option value="19">19:00</option>
+                                                                        <option value="20">20:00</option>
+                                                                        <option value="21">21:00</option>
+                                                                        <option value="22">22:00</option>
+                                                                        <option value="23">23:00</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <button class="btn btn-primary" id="save-report-schedule-settings-btn">Save Schedule Settings</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Schedule Status</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <p class="mb-2"><strong>Status:</strong> <span id="schedule-status" class="badge bg-secondary">Disabled</span></p>
+                                                        <p class="mb-2" id="schedule-last-sent">Last sent: Never</p>
+                                                        <small class="text-muted">
+                                                            Scheduled reports are sent automatically based on the frequency and time settings above.
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Branding & Styling -->
+                    <div class="tab-pane fade" id="branding-pane" role="tabpanel">
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5>Branding & Styling</h5>
+                                        <div>
+                                            <button class="btn btn-warning btn-sm me-2" id="reset-styling-btn">Reset to Defaults</button>
+                                            <button class="btn btn-info btn-sm" id="refresh-styling-btn">Refresh</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-info">
+                                            <strong>Customize your application's appearance:</strong> Upload a logo, change colors, fonts, and add custom CSS to match your brand.
+                                        </div>
+
+                                        <!-- Enable/Disable Styling -->
+                                        <div class="mb-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="styling-enabled">
+                                                <label class="form-check-label"><strong>Enable Custom Styling</strong></label>
+                                            </div>
+                                            <small class="text-muted">Toggle custom styling on/off. When disabled, default Bootstrap styles are used.</small>
+                                        </div>
+
+                                        <!-- Branding Tabs -->
+                                        <ul class="nav nav-pills mb-3" id="brandingTabs" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="logo-tab" data-bs-toggle="pill" data-bs-target="#logo-settings" type="button" role="tab">Logo</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="colors-tab" data-bs-toggle="pill" data-bs-target="#color-settings" type="button" role="tab">Colors</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="typography-tab" data-bs-toggle="pill" data-bs-target="#typography-settings" type="button" role="tab">Typography</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="custom-css-tab" data-bs-toggle="pill" data-bs-target="#custom-css-settings" type="button" role="tab">Custom CSS</button>
+                                            </li>
+                                        </ul>
+
+                                        <!-- Tab Content -->
+                                        <div class="tab-content" id="brandingTabContent">
+                                            <!-- Logo Settings -->
+                                            <div class="tab-pane fade show active" id="logo-settings" role="tabpanel">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="card">
+                                                            <div class="card-header">
+                                                                <h6>Logo Upload</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Upload Logo</label>
+                                                                    <input type="file" class="form-control" id="logo-upload" accept=".png,.jpg,.jpeg,.svg,.gif">
+                                                                    <small class="text-muted">Supported formats: PNG, JPG, SVG, GIF. Max size: 5MB</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Logo Alt Text</label>
+                                                                    <input type="text" class="form-control" id="logo-alt-text" placeholder="Company Logo">
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Navbar Logo Max Height (pixels)</label>
+                                                                    <input type="number" class="form-control" id="logo-max-height" value="50" min="20" max="150">
+                                                                    <small class="text-muted">Logo size in navigation bar</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Login Logo Max Height (pixels)</label>
+                                                                    <input type="number" class="form-control" id="login-logo-max-height" value="100" min="30" max="300">
+                                                                    <small class="text-muted">Logo size on login page</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox" id="show-logo-navbar" checked>
+                                                                        <label class="form-check-label">Show logo in navigation</label>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox" id="show-logo-login" checked>
+                                                                        <label class="form-check-label">Show logo on login page</label>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="d-flex gap-2">
+                                                                    <button class="btn btn-primary" id="upload-logo-btn">Upload Logo</button>
+                                                                    <button class="btn btn-danger" id="remove-logo-btn" style="display: none;">Remove Logo</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="card">
+                                                            <div class="card-header">
+                                                                <h6>Logo Preview</h6>
+                                                            </div>
+                                                            <div class="card-body text-center">
+                                                                <div id="logo-preview-container" style="min-height: 200px; display: flex; align-items: center; justify-content: center; border: 2px dashed #dee2e6; border-radius: 8px;">
+                                                                    <div id="no-logo-message" class="text-muted">
+                                                                        <i class="bi bi-image" style="font-size: 3rem;"></i>
+                                                                        <p>No logo uploaded</p>
+                                                                    </div>
+                                                                    <img id="logo-preview" src="" alt="" style="display: none; max-width: 100%; max-height: 150px;">
+                                                                </div>
+                                                                <div class="mt-2">
+                                                                    <small class="text-muted">Preview shows actual size in navbar</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Color Settings -->
+                                            <div class="tab-pane fade" id="color-settings" role="tabpanel">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="card">
+                                                            <div class="card-header">
+                                                                <h6>Bootstrap Theme Colors</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div class="row">
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Primary Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="primary-color" value="#007bff">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Secondary Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="secondary-color" value="#6c757d">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Success Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="success-color" value="#28a745">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Danger Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="danger-color" value="#dc3545">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Warning Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="warning-color" value="#ffc107">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Info Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="info-color" value="#17a2b8">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="card">
+                                                            <div class="card-header">
+                                                                <h6>Text & Background Colors</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div class="row">
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Body Background</label>
+                                                                        <input type="color" class="form-control form-control-color" id="body-bg-color" value="#ffffff">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Text Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="text-color" value="#212529">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Link Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="link-color" value="#007bff">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Link Hover Color</label>
+                                                                        <input type="color" class="form-control form-control-color" id="link-hover-color" value="#0056b3">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="card mt-3">
+                                                            <div class="card-header">
+                                                                <h6>Navigation Colors</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div class="row">
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Navbar Background</label>
+                                                                        <input type="color" class="form-control form-control-color" id="navbar-bg-color" value="#f8f9fa">
+                                                                    </div>
+                                                                    <div class="col-md-6 mb-3">
+                                                                        <label class="form-label">Navbar Text</label>
+                                                                        <input type="color" class="form-control form-control-color" id="navbar-text-color" value="#212529">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Typography Settings -->
+                                            <div class="tab-pane fade" id="typography-settings" role="tabpanel">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="card">
+                                                            <div class="card-header">
+                                                                <h6>Font Settings</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Body Font Family</label>
+                                                                    <select class="form-select" id="font-family">
+                                                                        <option value="system-ui">System Default</option>
+                                                                        <option value="Arial, sans-serif">Arial</option>
+                                                                        <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
+                                                                        <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
+                                                                        <option value="'Roboto', sans-serif">Roboto</option>
+                                                                        <option value="'Open Sans', sans-serif">Open Sans</option>
+                                                                        <option value="'Lato', sans-serif">Lato</option>
+                                                                        <option value="'Poppins', sans-serif">Poppins</option>
+                                                                        <option value="Georgia, serif">Georgia</option>
+                                                                        <option value="'Times New Roman', serif">Times New Roman</option>
+                                                                        <option value="'Courier New', monospace">Courier New</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Heading Font Family (optional)</label>
+                                                                    <select class="form-select" id="heading-font-family">
+                                                                        <option value="">Same as body font</option>
+                                                                        <option value="system-ui">System Default</option>
+                                                                        <option value="Arial, sans-serif">Arial</option>
+                                                                        <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
+                                                                        <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
+                                                                        <option value="'Roboto', sans-serif">Roboto</option>
+                                                                        <option value="'Open Sans', sans-serif">Open Sans</option>
+                                                                        <option value="'Lato', sans-serif">Lato</option>
+                                                                        <option value="'Poppins', sans-serif">Poppins</option>
+                                                                        <option value="Georgia, serif">Georgia</option>
+                                                                        <option value="'Times New Roman', serif">Times New Roman</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label">Brand Text</label>
+                                                                    <input type="text" class="form-control" id="navbar-brand-text-input" value="Parking Booking">
+                                                                    <small class="text-muted">Text shown in navigation bar</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="card">
+                                                            <div class="card-header">
+                                                                <h6>Typography Preview</h6>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div id="typography-preview">
+                                                                    <h1>Heading 1</h1>
+                                                                    <h2>Heading 2</h2>
+                                                                    <h3>Heading 3</h3>
+                                                                    <p>This is a paragraph of body text that shows how the selected font family will look in your application. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                                                                    <p><a href="#" onclick="return false;">This is a link example</a> that shows the link styling.</p>
+                                                                    <p><strong>Bold text</strong> and <em>italic text</em> examples.</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Custom CSS Settings -->
+                                            <div class="tab-pane fade" id="custom-css-settings" role="tabpanel">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Custom CSS</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="alert alert-warning">
+                                                            <strong>Advanced Users Only:</strong> Custom CSS will be added after all other styles. Use CSS custom properties (variables) for better maintainability.
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Custom CSS Code</label>
+                                                            <textarea class="form-control" id="custom-css" rows="15" placeholder="/* Add your custom CSS here */
+/* Example:
+.custom-class {
+    background-color: var(--bs-primary);
+    color: white;
+}
+
+/* Login page background */
+#login-form-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+*/"></textarea>
+                                                        </div>
+                                                        <div class="alert alert-info">
+                                                            <strong>Tip:</strong> You can use CSS custom properties like <code>var(--bs-primary)</code> to reference your theme colors.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Action Buttons -->
+                                        <div class="mt-4 d-flex justify-content-end gap-2">
+                                            <button class="btn btn-secondary" id="preview-styling-btn">Preview Changes</button>
+                                            <button class="btn btn-primary" id="save-styling-btn">Save Styling</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Status -->
+                    <div class="tab-pane fade" id="system-pane" role="tabpanel">
+                        <!-- Database Backup Settings -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5>Database Backup - Azure Blob Storage</h5>
+                                        <div>
+                                            <button class="btn btn-success btn-sm me-2" id="test-backup-connection-btn">Test Connection</button>
+                                            <button class="btn btn-warning btn-sm me-2" id="backup-now-btn">Backup Now</button>
+                                            <button class="btn btn-info btn-sm" id="refresh-backup-settings-btn">Refresh</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="backup-settings-form">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input" type="checkbox" id="backup-enabled">
+                                                            <label class="form-check-label">Enable Automatic Backups</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Azure Storage Account Name</label>
+                                                        <input type="text" class="form-control" id="backup-storage-account" placeholder="mystorageaccount">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Container Name</label>
+                                                        <input type="text" class="form-control" id="backup-container-name" placeholder="database-backups">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">SAS Token</label>
+                                                        <textarea class="form-control" id="backup-sas-token" rows="3" placeholder="sv=2022-11-02&ss=b&srt=co&sp=rwdlacupyx&se=..."></textarea>
+                                                        <small class="text-muted">Include the full SAS token with all parameters</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Backup Frequency</label>
+                                                        <select class="form-select" id="backup-frequency">
+                                                            <option value="daily">Daily</option>
+                                                            <option value="weekly">Weekly</option>
+                                                            <option value="monthly">Monthly</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Backup Hour (24h format)</label>
+                                                        <select class="form-select" id="backup-hour">
+                                                            <option value="0">00:00 (Midnight)</option>
+                                                            <option value="1">01:00</option>
+                                                            <option value="2" selected>02:00</option>
+                                                            <option value="3">03:00</option>
+                                                            <option value="4">04:00</option>
+                                                            <option value="5">05:00</option>
+                                                            <option value="6">06:00</option>
+                                                            <option value="7">07:00</option>
+                                                            <option value="8">08:00</option>
+                                                            <option value="9">09:00</option>
+                                                            <option value="10">10:00</option>
+                                                            <option value="11">11:00</option>
+                                                            <option value="12">12:00 (Noon)</option>
+                                                            <option value="13">13:00</option>
+                                                            <option value="14">14:00</option>
+                                                            <option value="15">15:00</option>
+                                                            <option value="16">16:00</option>
+                                                            <option value="17">17:00</option>
+                                                            <option value="18">18:00</option>
+                                                            <option value="19">19:00</option>
+                                                            <option value="20">20:00</option>
+                                                            <option value="21">21:00</option>
+                                                            <option value="22">22:00</option>
+                                                            <option value="23">23:00</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Keep Backups (days)</label>
+                                                        <input type="number" class="form-control" id="backup-keep-backups" value="30" min="1" max="365">
+                                                        <small class="text-muted">Number of days to retain backups</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Save Backup Settings</button>
+                                        </form>
+                                        
+                                        <!-- Backup Status -->
+                                        <div class="row mt-4">
+                                            <div class="col-md-6">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h6>Backup Status</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <p class="mb-2"><strong>Last Backup:</strong> <span id="backup-last-time">Never</span></p>
+                                                        <p class="mb-2"><strong>Status:</strong> <span id="backup-last-status" class="badge bg-secondary">Not configured</span></p>
+                                                        <p class="mb-2"><strong>Size:</strong> <span id="backup-last-size">-</span></p>
+                                                        <p class="mb-0"><strong>Error:</strong> <span id="backup-last-error" class="text-danger">-</span></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card">
+                                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                                        <h6>Recent Backups</h6>
+                                                        <button class="btn btn-sm btn-outline-primary" id="refresh-backup-list-btn">Load</button>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div id="backup-list" style="max-height: 200px; overflow-y: auto;">
+                                                            <p class="text-muted">Click refresh to load backup list</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Timezone Configuration -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5>Timezone Configuration</h5>
+                                        <button class="btn btn-primary btn-sm" id="refresh-timezone-settings-btn">Refresh</button>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="timezone-settings-form">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Current System Timezone</label>
+                                                        <input type="text" class="form-control" id="current-timezone" readonly>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Available Timezones</label>
+                                                        <select class="form-select" id="available-timezones">
+                                                            <option value="">Loading...</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary" id="save-timezone-settings">Save Timezone Settings</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Email Configuration -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5>Email Configuration</h5>
+                                        <div>
+                                            <button class="btn btn-success btn-sm me-2" id="test-email-btn">Test Email</button>
+                                            <button class="btn btn-info btn-sm" id="refresh-email-settings-btn">Refresh</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="email-settings-form">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">SendGrid API Key</label>
+                                                        <input type="password" class="form-control" id="sendgrid-api-key" placeholder="SG.xxx">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">From Email</label>
+                                                        <input type="email" class="form-control" id="from-email" placeholder="noreply@example.com">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">From Name</label>
+                                                        <input type="text" class="form-control" id="from-name" placeholder="Parking Booking System">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input" type="checkbox" id="booking-confirmation-enabled">
+                                                            <label class="form-check-label">Enable Booking Confirmations</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input" type="checkbox" id="reports-enabled">
+                                                            <label class="form-check-label">Enable Reports</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Report Recipients (comma-separated emails)</label>
+                                                        <textarea class="form-control" id="report-recipients" rows="2" placeholder="admin@example.com, manager@example.com"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Save Email Settings</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>System Status</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Current User:</strong> <span id="admin-current-user"></span></p>
+                                        <p><strong>Admin Status:</strong> <span id="admin-status" class="badge bg-success">Active</span></p>
+                                        <p><strong>Session Type:</strong> <span id="session-type"></span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>Quick Actions</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <button class="btn btn-primary mb-2 w-100" id="test-admin-api-btn">Test Admin API Access</button>
+                                        <button class="btn btn-info mb-2 w-100" id="load-log-stats-btn">View Log Statistics</button>
+                                        <button class="btn btn-warning mb-2 w-100" id="cleanup-old-logs-btn">Cleanup Old Logs</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>System Information</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <pre id="admin-test-results" style="background-color: #f8f9fa; padding: 1rem; border-radius: 0.375rem; max-height: 400px; overflow-y: auto;">System ready. Select an action above to see results.</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+{% endblock %}

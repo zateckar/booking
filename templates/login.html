@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+        <div id="login-form-container">
+            <div class="text-center mt-5">
+                <img id="login-logo" src="" alt="" style="display: none;" class="login-logo">
+                <h1 id="login-title">Booking</h1>
+            </div>
+            <form id="login-form" class="mx-auto" style="max-width: 400px;">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Login</button>
+            </form>
+            
+            <!-- OIDC Options -->
+            <div id="oidc-login-buttons" class="text-center mt-3"></div>
+        </div>
+
+        <div id="main-content" style="display: none;">
+            <!-- This content will be shown after successful authentication -->
+            <div class="text-center mt-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Redirecting to application...</p>
+            </div>
+        </div>
+{% endblock %}
