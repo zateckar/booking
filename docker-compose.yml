@@ -4,11 +4,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - booking_data:/app/data
-      - booking_logs:/app/logs
+      - booking_data:/app/data:Z
+      - booking_logs:/app/logs:Z
     # Run as current user to resolve volume permission issues
     # Default to 1000:1000, but can be overridden with DOCKER_USER environment variable
-    user: "${DOCKER_USER:-1000:1000}"
+    user: "1010:1010"
     environment:
       # Initial Admin User (for first-time setup)
       - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL:-admin@example.com}
@@ -20,9 +20,7 @@ services:
 
 volumes:
   booking_data:
-    driver: local
   booking_logs:
-    driver: local
 
 networks:
   booking-network:

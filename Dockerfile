@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install uv
 
 # Create app user and group with specific UID/GID to match docker-compose
-RUN groupadd -g 1000 appuser && useradd -u 1000 -g 1000 -m -s /bin/bash appuser
+RUN groupadd -g 1010 appuser && useradd -u 1010 -g 1010 -m -s /bin/bash appuser
 
 # Set work directory
 WORKDIR /app
@@ -38,7 +38,7 @@ RUN chmod +x /app/entrypoint.sh
 # Create directories for data persistence and fix UV cache permissions
 RUN mkdir -p /app/data /app/logs && \
     mkdir -p /tmp/uv-cache && \
-    chown -R appuser:appuser /app /tmp/uv-cache
+    chown -R appuser:appuser /app /app/data /app/logs /tmp/uv-cache
 
 # Switch to non-root user
 USER appuser
