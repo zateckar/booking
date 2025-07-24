@@ -32,7 +32,7 @@ RUN chmod +x /app/entrypoint.sh
 
 # Create directories for data persistence and fix UV cache permissions
 RUN mkdir -p /app/data /app/logs && \
-    mkdir -p /tmp/uv-cache && \
+    mkdir -p /tmp/uv-cache
 
 # Expose port
 EXPOSE 8000
