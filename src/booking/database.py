@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 
 # Use the mounted volume directory for database persistence
 # Check if DATABASE_URL is set in environment, otherwise use default path
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app/data/booking.db")
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///booking.db")
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 

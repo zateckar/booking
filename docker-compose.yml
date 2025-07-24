@@ -4,20 +4,19 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - /opt/booking:/app/data:Z
-      - /opt/booking:/app/logs:Z
+      - booking_data:/app
     environment:
       # Initial Admin User (for first-time setup)
       - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL:-admin@example.com}
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:-change-this-secure-password}
       - ENVIRONMENT=production
+      - DATABASE_URL=sqlite:///booking.db
     restart: unless-stopped
     networks:
       - booking-network
 
 volumes:
   booking_data:
-  booking_logs:
 
 networks:
   booking-network:

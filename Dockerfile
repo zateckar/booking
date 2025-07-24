@@ -38,7 +38,7 @@ EXPOSE 8000
 
 # Set environment variables for production
 ENV PYTHONPATH=/app \
-    DATABASE_URL=sqlite:///app/booking.db
+    DATABASE_URL=sqlite:///booking.db
 
 # Use entrypoint script to handle permissions
 ENTRYPOINT ["/app/entrypoint.sh"]

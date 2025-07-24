@@ -1,4 +1,5 @@
 from authlib.integrations.starlette_client import OAuth
+from authlib.common.errors import AuthlibBaseError
 from fastapi import Request
 import logging
 import json
@@ -14,6 +15,53 @@ from .claims_service import ClaimsMappingService, ClaimsProcessingError
 # Initialize OAuth with proper configuration
 oauth = OAuth()
 logger = logging.getLogger(__name__)
+
+
+async def fix_skoda_jwks(jwks_url: str) -> Dict[str, Any]:
+    """
+    Fix Skoda/VW Group JWKS issue with duplicate key IDs.
+    
+    The Skoda OIDC provider returns JWKS with duplicate 'kid' values for
+    encryption and signing keys, which violates JWKS standards.
+    This function fetches the JWKS and fixes duplicate key IDs.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(jwks_url)
+            response.raise_for_status()
+            jwks = response.json()
+            
+            if 'keys' not in jwks:
+                logger.error(f"Invalid JWKS response from {jwks_url}: missing 'keys' field")
+                return jwks
+            
+            # Track seen key IDs and fix duplicates
+            seen_kids = {}
+            fixed_keys = []
+            
+            for i, key in enumerate(jwks['keys']):
+                kid = key.get('kid')
+                use = key.get('use', 'unknown')
+                
+                if kid:
+                    if kid in seen_kids:
+                        # Duplicate kid found - make it unique by adding use suffix
+                        original_kid = kid
+                        new_kid = f"{kid}_{use}"
+                        key['kid'] = new_kid
+                        logger.info(f"Fixed duplicate JWKS key ID: {original_kid} -> {new_kid} (use: {use})")
+                    else:
+                        seen_kids[kid] = True
+                
+                fixed_keys.append(key)
+            
+            jwks['keys'] = fixed_keys
+            logger.info(f"Fixed JWKS with {len(fixed_keys)} keys from {jwks_url}")
+            return jwks
+            
+    except Exception as e:
+        logger.error(f"Failed to fix JWKS from {jwks_url}: {e}")
+        raise e
 
 
 def register_oidc_provider(provider: models.OIDCProvider):
@@ -112,7 +160,52 @@ async def process_auth_response(request: Request, provider_name: str):
             token = await client.authorize_access_token(request)
         except Exception as token_error:
             error_msg = str(token_error).lower()
-            if "use" in error_msg and "not valid" in error_msg:
+            
+            # Check for JWKS validation errors (like duplicate key IDs)
+            if ("invalid json web key set" in error_msg or 
+                "jwks" in error_msg or 
+                "duplicate" in error_msg and "key" in error_msg):
+                
+                logger.warning(f"JWKS validation error detected: {str(token_error)}")
+                logger.info("Attempting to fix JWKS with duplicate key IDs...")
+                
+                try:
+                    # Get the well-known configuration to find the JWKS URL
+                    async with httpx.AsyncClient() as http_client:
+                        resp = await http_client.get(provider.well_known_url)
+                        resp.raise_for_status()
+                        well_known = resp.json()
+                        jwks_uri = well_known.get('jwks_uri')
+                        
+                        if jwks_uri:
+                            # Fix the JWKS and create a custom client
+                            logger.info(f"Fixing JWKS from: {jwks_uri}")
+                            fixed_jwks = await fix_skoda_jwks(jwks_uri)
+                            
+                            # Register client with custom JWKS
+                            oauth.register(
+                                name=f"{provider.issuer}_fixed_jwks",
+                                client_id=provider.client_id,
+                                client_secret=provider.client_secret,
+                                server_metadata_url=provider.well_known_url,
+                                client_kwargs={
+                                    "scope": provider.scopes
+                                },
+                                jwks=fixed_jwks  # Use our fixed JWKS
+                            )
+                            
+                            fixed_client = oauth._clients[f"{provider.issuer}_fixed_jwks"]
+                            token = await fixed_client.authorize_access_token(request)
+                            logger.info("Successfully authenticated using fixed JWKS")
+                        else:
+                            logger.error("No jwks_uri found in well-known configuration")
+                            raise token_error
+                            
+                except Exception as jwks_fix_error:
+                    logger.error(f"Failed to fix JWKS validation error: {jwks_fix_error}")
+                    raise token_error
+                    
+            elif "use" in error_msg and "not valid" in error_msg:
                 logger.warning(f"JWT key validation issue detected: {str(token_error)}")
                 # For Skoda/VW Group OIDC, try with different token endpoint method
                 try:
