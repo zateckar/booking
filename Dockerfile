@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y \
 # Install UV package manager
 RUN pip install uv
 
-# Create app user and group
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create app user and group with specific UID/GID to match docker-compose
+RUN groupadd -g 1000 appuser && useradd -u 1000 -g 1000 -m -s /bin/bash appuser
 
 # Set work directory
 WORKDIR /app
