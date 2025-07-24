@@ -4,8 +4,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - booking_data:/app/data:Z
-      - booking_logs:/app/logs:Z
+      - /opt/booking:/app/data:Z
+      - /opt/booking:/app/logs:Z
     environment:
       # Initial Admin User (for first-time setup)
       - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL:-admin@example.com}
