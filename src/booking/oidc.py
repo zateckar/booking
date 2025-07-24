@@ -17,11 +17,9 @@ oauth = OAuth()
 logger = logging.getLogger(__name__)
 
 
-async def fix_skoda_jwks(jwks_url: str) -> Dict[str, Any]:
+async def fix_duplicate_jwks(jwks_url: str) -> Dict[str, Any]:
     """
-    Fix Skoda/VW Group JWKS issue with duplicate key IDs.
-    
-    The Skoda OIDC provider returns JWKS with duplicate 'kid' values for
+    The OIDC provider returns JWKS with duplicate 'kid' values for
     encryption and signing keys, which violates JWKS standards.
     This function fetches the JWKS and fixes duplicate key IDs.
     """
@@ -180,7 +178,7 @@ async def process_auth_response(request: Request, provider_name: str):
                         if jwks_uri:
                             # Fix the JWKS and create a custom client
                             logger.info(f"Fixing JWKS from: {jwks_uri}")
-                            fixed_jwks = await fix_skoda_jwks(jwks_uri)
+                            fixed_jwks = await fix_duplicate_jwks(jwks_uri)
                             
                             # Register client with custom JWKS
                             oauth.register(

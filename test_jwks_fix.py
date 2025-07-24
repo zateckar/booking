@@ -6,7 +6,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from booking.oidc import fix_skoda_jwks
+from booking.oidc import fix_duplicate_jwks
 import httpx
 import json
 
@@ -59,7 +59,7 @@ async def test_jwks_fix():
     # Now test our fix
     print("=== Fixed JWKS (with unique key IDs) ===")
     try:
-        fixed_jwks = await fix_skoda_jwks(jwks_url)
+        fixed_jwks = await fix_duplicate_jwks(jwks_url)
         
         print(f"Number of keys: {len(fixed_jwks.get('keys', []))}")
         
