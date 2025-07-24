@@ -2,9 +2,7 @@
 FROM python:3.13-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    UV_CACHE_DIR=/tmp/uv-cache
+ENV UV_CACHE_DIR=/tmp/uv-cache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -13,9 +11,6 @@ RUN apt-get update && apt-get install -y \
 
 # Install UV package manager
 RUN pip install uv
-
-# Create app user and group with specific UID/GID to match docker-compose
-RUN groupadd -g 1010 appuser && useradd -u 1010 -g 1010 -m -s /bin/bash appuser
 
 # Set work directory
 WORKDIR /app
@@ -38,10 +33,6 @@ RUN chmod +x /app/entrypoint.sh
 # Create directories for data persistence and fix UV cache permissions
 RUN mkdir -p /app/data /app/logs && \
     mkdir -p /tmp/uv-cache && \
-    chown -R appuser:appuser /app /app/data /app/logs /tmp/uv-cache
-
-# Switch to non-root user
-USER appuser
 
 # Expose port
 EXPOSE 8000
