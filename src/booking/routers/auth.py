@@ -151,6 +151,49 @@ def check_token_status(request: Request):
     return {"needs_refresh": False}
 
 
+def _get_secure_logout_redirect_uri(request: Request) -> str:
+    """
+    Generate a secure post-logout redirect URI, ensuring HTTPS in production environments.
+    """
+    import os
+    
+    # Build base URL from request
+    base_url = str(request.base_url).rstrip('/')
+    post_logout_redirect_uri = f"{base_url}/logout-complete"
+    
+    # Check if we should force HTTPS based on various indicators
+    force_https = False
+    
+    # Method 1: Check for explicit environment variable
+    if os.getenv("FORCE_HTTPS_REDIRECTS", "").lower() in ("true", "1", "yes"):
+        force_https = True
+        logger.debug("Force HTTPS enabled via FORCE_HTTPS_REDIRECTS environment variable")
+    
+    # Method 2: Check for reverse proxy headers indicating HTTPS termination
+    elif request.headers.get("x-forwarded-proto") == "https":
+        force_https = True
+        logger.debug("HTTPS detected via X-Forwarded-Proto header")
+    
+    elif request.headers.get("x-forwarded-ssl") == "on":
+        force_https = True
+        logger.debug("HTTPS detected via X-Forwarded-Ssl header")
+    
+    # Method 3: Check if running in containerized environment (common production setup)
+    elif os.getenv("DOCKER_CONTAINER") or os.path.exists("/.dockerenv"):
+        # In container, assume production deployment with HTTPS termination
+        # unless explicitly running in development mode
+        if os.getenv("ENVIRONMENT", "").lower() not in ("development", "dev", "local"):
+            force_https = True
+            logger.debug("HTTPS assumed for containerized production deployment")
+    
+    # Apply HTTPS if determined necessary
+    if force_https and post_logout_redirect_uri.startswith("http://"):
+        post_logout_redirect_uri = post_logout_redirect_uri.replace("http://", "https://", 1)
+        logger.info(f"Post-logout redirect URI scheme changed to HTTPS for production: {post_logout_redirect_uri}")
+    
+    return post_logout_redirect_uri
+
+
 @router.post("/api/logout")
 async def logout(request: Request, response: Response):
     """Logout endpoint that handles both local and OIDC logout"""
@@ -181,9 +224,8 @@ async def logout(request: Request, response: Response):
         
         from ..oidc import get_oidc_logout_url
         
-        # Build the post-logout redirect URI (to our logout completion handler)
-        base_url = str(request.base_url).rstrip('/')
-        post_logout_redirect_uri = f"{base_url}/logout-complete"
+        # Build the secure post-logout redirect URI (to our logout completion handler)
+        post_logout_redirect_uri = _get_secure_logout_redirect_uri(request)
         
         try:
             oidc_logout_url = await get_oidc_logout_url(

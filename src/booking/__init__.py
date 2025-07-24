@@ -123,6 +123,51 @@ async def main_app(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+def _get_secure_redirect_uri(request: Request, endpoint: str, **path_params) -> str:
+    """
+    Generate a secure redirect URI, ensuring HTTPS in production environments.
+    
+    This function detects if the app is running behind a reverse proxy with HTTPS
+    termination and ensures the redirect URI uses HTTPS scheme when appropriate.
+    """
+    import os
+    
+    # Generate the base URI
+    redirect_uri = str(request.url_for(endpoint, **path_params))
+    
+    # Check if we should force HTTPS based on various indicators
+    force_https = False
+    
+    # Method 1: Check for explicit environment variable
+    if os.getenv("FORCE_HTTPS_REDIRECTS", "").lower() in ("true", "1", "yes"):
+        force_https = True
+        logger.debug("Force HTTPS enabled via FORCE_HTTPS_REDIRECTS environment variable")
+    
+    # Method 2: Check for reverse proxy headers indicating HTTPS termination
+    elif request.headers.get("x-forwarded-proto") == "https":
+        force_https = True
+        logger.debug("HTTPS detected via X-Forwarded-Proto header")
+    
+    elif request.headers.get("x-forwarded-ssl") == "on":
+        force_https = True
+        logger.debug("HTTPS detected via X-Forwarded-Ssl header")
+    
+    # Method 3: Check if running in containerized environment (common production setup)
+    elif os.getenv("DOCKER_CONTAINER") or os.path.exists("/.dockerenv"):
+        # In container, assume production deployment with HTTPS termination
+        # unless explicitly running in development mode
+        if os.getenv("ENVIRONMENT", "").lower() not in ("development", "dev", "local"):
+            force_https = True
+            logger.debug("HTTPS assumed for containerized production deployment")
+    
+    # Apply HTTPS if determined necessary
+    if force_https and redirect_uri.startswith("http://"):
+        redirect_uri = redirect_uri.replace("http://", "https://", 1)
+        logger.info(f"Redirect URI scheme changed to HTTPS for production: {redirect_uri}")
+    
+    return redirect_uri
+
+
 @app.get("/api/login/oidc/{provider_name:path}")
 async def login_oidc(request: Request, provider_name: str):
     # URL decode the provider name first
@@ -197,7 +242,8 @@ async def login_oidc(request: Request, provider_name: str):
             )
             client = oauth._clients[provider.issuer]
         
-        redirect_uri = request.url_for("auth_oidc", provider_name=provider_name)
+        # Generate secure redirect URI (HTTPS in production)
+        redirect_uri = _get_secure_redirect_uri(request, "auth_oidc", provider_name=provider_name)
         logger.debug(f"Redirecting to OIDC provider with redirect_uri: {redirect_uri}")
         return await client.authorize_redirect(request, redirect_uri)
         
