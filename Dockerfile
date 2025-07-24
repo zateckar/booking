@@ -31,12 +31,16 @@ RUN uv sync --frozen --no-dev
 # Copy remaining application code
 COPY . .
 
+# Copy and make entrypoint script executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Create directories for data persistence and fix UV cache permissions
 RUN mkdir -p /app/data /app/logs && \
     mkdir -p /tmp/uv-cache && \
     chown -R appuser:appuser /app /tmp/uv-cache
 
-# Create a non-root user for running the application
+# Switch to non-root user
 USER appuser
 
 # Expose port
@@ -45,6 +49,9 @@ EXPOSE 8000
 # Set environment variables for production
 ENV PYTHONPATH=/app \
     DATABASE_URL=sqlite:///app/data/booking.db
+
+# Use entrypoint script to handle permissions
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Command to run the application
 CMD ["uv", "run", "python", "run.py"]

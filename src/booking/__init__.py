@@ -21,7 +21,7 @@ from .logging_config import setup_logging, get_logger
 setup_logging()
 logger = get_logger("main")
 
-models.Base.metadata.create_all(bind=engine)
+# Database tables will be created by create_db_and_tables() in run.py
 
 app = FastAPI()
 
