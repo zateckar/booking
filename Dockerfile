@@ -31,15 +31,14 @@ COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # Create directories for data persistence and fix UV cache permissions
-RUN mkdir -p /app/data /app/logs && \
-    mkdir -p /tmp/uv-cache
+RUN mkdir -p /tmp/uv-cache
 
 # Expose port
 EXPOSE 8000
 
 # Set environment variables for production
 ENV PYTHONPATH=/app \
-    DATABASE_URL=sqlite:///app/data/booking.db
+    DATABASE_URL=sqlite:///app/booking.db
 
 # Use entrypoint script to handle permissions
 ENTRYPOINT ["/app/entrypoint.sh"]
