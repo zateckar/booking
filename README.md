@@ -40,41 +40,54 @@ A modern FastAPI-based booking system with OIDC authentication, administrative d
    cd booking
    ```
 
-2. **Start with Docker Compose**:
+2. **Create environment file** (copy from example and customize):
+   ```bash
+   cp .env.example .env
+   # Edit .env with your admin credentials:
+   # - INITIAL_ADMIN_EMAIL (your admin email)
+   # - INITIAL_ADMIN_PASSWORD (your admin password)
+   ```
+
+3. **Start with Docker Compose**:
    ```bash
    docker-compose up -d
    ```
 
-3. **Access the application**:
+4. **Access the application**:
    - Main application: http://localhost:8000
    - Admin dashboard: http://localhost:8000/static/admin.html
+   - Login with the credentials you set in `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD`
 
 ### Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory with only the essential variables:
 
 ```env
-# Application Settings
-SECRET_KEY=your-secret-key-change-in-production
-DEBUG=false
-PORT=8000
-
-# Database (SQLite file path inside container)
-DATABASE_URL=sqlite:///./booking.db
-
-# OIDC Configuration (Optional - can be configured via admin panel)
-OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
-OIDC_ISSUER=https://your-oidc-provider.com
-
-# Email Configuration (Optional - SendGrid)
-SENDGRID_API_KEY=your-sendgrid-api-key
-FROM_EMAIL=noreply@yourdomain.com
-FROM_NAME=Booking System
-
-# Timezone
-DEFAULT_TIMEZONE=UTC
+# Initial Admin User (for first-time setup)
+INITIAL_ADMIN_EMAIL=admin@example.com
+INITIAL_ADMIN_PASSWORD=change-this-secure-password
 ```
+
+**Note**: All other configuration (OIDC, Email, Database settings, etc.) is done through the admin panel interface after logging in.
+
+#### Initial Admin User Setup
+
+The application can automatically create an initial admin user on first startup using environment variables:
+
+- **INITIAL_ADMIN_EMAIL**: Email address for the admin user
+- **INITIAL_ADMIN_PASSWORD**: Password for the admin user
+
+When the application starts for the first time, it will:
+1. Check if a user with the specified email already exists
+2. If not, create a new admin user with the provided credentials
+3. Hash the password securely using bcrypt
+4. Set the user as an administrator
+
+**Important Notes:**
+- These credentials are only used for initial setup
+- Once created, the admin user persists in the database
+- You can remove these environment variables after the initial setup
+- The admin user can then configure additional users and OIDC providers through the admin panel
 
 ## Development Setup
 
@@ -186,7 +199,8 @@ The repository includes GitHub Actions workflow for automated building and deplo
      --name booking-app \
      -p 8000:8000 \
      -v booking_data:/app/data \
-     -e SECRET_KEY=your-secret-key \
+     -e INITIAL_ADMIN_EMAIL=your-admin@example.com \
+     -e INITIAL_ADMIN_PASSWORD=your-secure-password \
      booking-app
    ```
 
@@ -253,7 +267,7 @@ Application logs are available:
 
 ## License
 
-[Specify your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
