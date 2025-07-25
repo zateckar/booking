@@ -127,20 +127,15 @@ async def ensure_oidc_client_registered(provider: models.OIDCProvider) -> Any:
             # Remove jwks_uri to ensure our fixed jwks is used by authlib
             server_metadata.pop('jwks_uri', None)
         
-        # Manually map server metadata to authlib's init parameters
-        config_params = {
-            'authorize_url': server_metadata.pop('authorization_endpoint', None),
-            'access_token_url': server_metadata.pop('token_endpoint', None),
-        }
-        config_params.update(server_metadata)
-
         oauth.register(
             name=provider.issuer,
             client_id=provider.client_id,
             client_secret=provider.client_secret,
             client_kwargs={"scope": provider.scopes},
             token_endpoint_auth_method='client_secret_post',
-            **config_params
+            # Pass the entire server_metadata dictionary directly.
+            # This ensures authlib uses our fixed 'jwks' and other metadata.
+            server_metadata=server_metadata
         )
         logger.info(f"Successfully registered OIDC client for {provider.issuer}")
         return oauth._clients[provider.issuer]
