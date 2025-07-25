@@ -133,9 +133,11 @@ async def ensure_oidc_client_registered(provider: models.OIDCProvider) -> Any:
             client_secret=provider.client_secret,
             client_kwargs={"scope": provider.scopes},
             token_endpoint_auth_method='client_secret_post',
-            # Pass the entire server_metadata dictionary directly.
-            # This ensures authlib uses our fixed 'jwks' and other metadata.
-            server_metadata=server_metadata
+            # Unpack the server_metadata dictionary into keyword arguments.
+            # This is the method that works with this version of `authlib`
+            # to correctly pass the fixed 'jwks' and other parameters,
+            # preventing authlib from re-fetching the non-compliant JWKS.
+            **server_metadata
         )
         logger.info(f"Successfully registered OIDC client for {provider.issuer}")
         return oauth._clients[provider.issuer]
