@@ -13,7 +13,7 @@ from . import models
 from .database import engine, get_db
 from .routers.admin import router as admin_router
 from .routers import bookings, users, parking_lots, auth
-from .oidc import oauth, process_auth_response, validate_and_fix_jwks
+from .oidc import oauth, process_auth_response, ensure_oidc_client_registered
 from .scheduler import start_scheduler, stop_scheduler
 from .logging_config import setup_logging, get_logger
 
@@ -185,58 +185,11 @@ async def login_oidc(request: Request, provider_name: str):
 
         logger.debug(f"Found OIDC provider: {provider.issuer}, well_known_url: {provider.well_known_url}")
 
-        # Register the provider with OAuth client if not already registered
-        try:
-            client = oauth._clients.get(provider.issuer)
-        except (AttributeError, KeyError):
-            client = None
-            
-        if client is None:
-            logger.debug(f"Client for provider {provider.issuer} not found, registering.")
-
-            # Some OIDC providers might have non-compliant JWKS (e.g. wrong 'use' parameter or duplicate kids).
-            # We fetch the server metadata and JWKS manually to inspect and fix it
-            # before registering the client. This makes the first login for a provider
-            # a bit slower, but it's cached afterward.
-            async with httpx.AsyncClient() as http_client:
-                try:
-                    resp = await http_client.get(provider.well_known_url)
-                    resp.raise_for_status()
-                    server_metadata = resp.json()
-
-                    jwks_uri = server_metadata.get('jwks_uri')
-                    if jwks_uri:
-                        # Use the robust JWKS validation and fixing function from oidc.py
-                        # This handles duplicate kids and removes 'use' parameter.
-                        fixed_jwks = await validate_and_fix_jwks(jwks_uri)
-                        server_metadata['jwks'] = fixed_jwks
-                        # Remove jwks_uri to ensure our fixed jwks is used by authlib
-                        server_metadata.pop('jwks_uri', None)
-                except (httpx.HTTPStatusError, ValueError) as e:
-                    logger.error(f"Failed to fetch or fix OIDC metadata for {provider.issuer}: {e}")
-                    raise HTTPException(status_code=500, detail="Failed to configure OIDC provider.")
-
-            # Manually map server metadata to authlib's init parameters
-            # and pass the rest as kwargs to be stored in client.server_metadata.
-            # This is necessary because the installed version of authlib does not
-            # have a 'server_metadata' parameter in the client constructor.
-            config_params = {
-                'authorize_url': server_metadata.pop('authorization_endpoint', None),
-                'access_token_url': server_metadata.pop('token_endpoint', None),
-            }
-            # The rest of the metadata (including our fixed 'jwks') will be passed
-            # via **kwargs and stored in the client's `server_metadata` attribute.
-            config_params.update(server_metadata)
-
-            oauth.register(
-                name=provider.issuer,
-                client_id=provider.client_id,
-                client_secret=provider.client_secret,
-                client_kwargs={"scope": provider.scopes},
-                token_endpoint_auth_method='client_secret_post',
-                **config_params
-            )
-            client = oauth._clients[provider.issuer]
+        # Ensure the client is registered using the consolidated, robust function.
+        # This handles JWKS fixing and is idempotent.
+        client = await ensure_oidc_client_registered(provider)
+        if not client:
+             raise HTTPException(status_code=500, detail="Failed to configure OIDC provider.")
         
         # Generate secure redirect URI (HTTPS in production)
         redirect_uri = _get_secure_redirect_uri(request, "auth_oidc", provider_name=provider_name)

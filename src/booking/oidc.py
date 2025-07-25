@@ -17,58 +17,6 @@ oauth = OAuth()
 logger = logging.getLogger(__name__)
 
 
-async def fix_duplicate_jwks(jwks_url: str) -> Dict[str, Any]:
-    """
-    The OIDC provider returns JWKS with duplicate 'kid' values for
-    encryption and signing keys, which violates JWKS standards.
-    This function fetches the JWKS and fixes duplicate key IDs.
-    """
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(jwks_url)
-            response.raise_for_status()
-            jwks = response.json()
-            
-            if 'keys' not in jwks:
-                logger.error(f"Invalid JWKS response from {jwks_url}: missing 'keys' field")
-                return jwks
-            
-            # Track seen key IDs and fix duplicates
-            seen_kids = {}
-            fixed_keys = []
-            duplicate_count = 0
-            
-            for i, key in enumerate(jwks['keys']):
-                kid = key.get('kid')
-                use = key.get('use', 'unknown')
-                alg = key.get('alg', 'unknown')
-                
-                if kid:
-                    if kid in seen_kids:
-                        # Duplicate kid found - make it unique by adding use and algorithm suffix
-                        original_kid = kid
-                        new_kid = f"{kid}_{use}_{alg}"
-                        key['kid'] = new_kid
-                        duplicate_count += 1
-                        logger.info(f"Fixed duplicate JWKS key ID: {original_kid} -> {new_kid} (use: {use}, alg: {alg})")
-                    else:
-                        seen_kids[kid] = True
-                        
-                # Validate key has required fields
-                if not key.get('kty'):
-                    logger.warning(f"JWKS key missing 'kty' field: {key}")
-                    continue
-                    
-                fixed_keys.append(key)
-            
-            jwks['keys'] = fixed_keys
-            logger.info(f"Fixed JWKS with {len(fixed_keys)} keys from {jwks_url} (fixed {duplicate_count} duplicates)")
-            return jwks
-            
-    except Exception as e:
-        logger.error(f"Failed to fix JWKS from {jwks_url}: {e}")
-        raise e
-
 
 async def validate_and_fix_jwks(jwks_url: str) -> Dict[str, Any]:
     """
@@ -146,21 +94,61 @@ async def validate_and_fix_jwks(jwks_url: str) -> Dict[str, Any]:
         raise e
 
 
-def register_oidc_provider(provider: models.OIDCProvider):
-    """Register an OIDC provider with OAuth client using configured scopes"""
-    logger.info(f"Registering OIDC provider: {provider.issuer}")
-    logger.debug(f"Provider scopes: {provider.scopes}")
-    
-    oauth.register(
-        name=provider.issuer,
-        client_id=provider.client_id,
-        client_secret=provider.client_secret,
-        server_metadata_url=provider.well_known_url,
-        client_kwargs={
-            "scope": provider.scopes
-        }
-    )
+async def ensure_oidc_client_registered(provider: models.OIDCProvider) -> Any:
+    """
+    Ensures that an OIDC client is registered with authlib, fixing JWKS if necessary.
+    This function is idempotent and returns the registered client.
+    """
+    try:
+        # Check if client is already registered
+        client = oauth._clients.get(provider.issuer)
+        if client:
+            logger.debug(f"OIDC client for {provider.issuer} is already registered.")
+            return client
+    except (AttributeError, KeyError):
+        # Client not registered, proceed to register.
+        pass
 
+    logger.info(f"Client for provider {provider.issuer} not found. Registering now.")
+
+    try:
+        # Fetch server metadata to get all endpoints and JWKS URI
+        async with httpx.AsyncClient() as http_client:
+            resp = await http_client.get(provider.well_known_url)
+            resp.raise_for_status()
+            server_metadata = resp.json()
+
+        jwks_uri = server_metadata.get('jwks_uri')
+        if jwks_uri:
+            logger.info(f"Fetching and fixing JWKS for {provider.issuer} from {jwks_uri}")
+            # Use the robust JWKS validation and fixing function
+            fixed_jwks = await validate_and_fix_jwks(jwks_uri)
+            server_metadata['jwks'] = fixed_jwks
+            # Remove jwks_uri to ensure our fixed jwks is used by authlib
+            server_metadata.pop('jwks_uri', None)
+        
+        # Manually map server metadata to authlib's init parameters
+        config_params = {
+            'authorize_url': server_metadata.pop('authorization_endpoint', None),
+            'access_token_url': server_metadata.pop('token_endpoint', None),
+        }
+        config_params.update(server_metadata)
+
+        oauth.register(
+            name=provider.issuer,
+            client_id=provider.client_id,
+            client_secret=provider.client_secret,
+            client_kwargs={"scope": provider.scopes},
+            token_endpoint_auth_method='client_secret_post',
+            **config_params
+        )
+        logger.info(f"Successfully registered OIDC client for {provider.issuer}")
+        return oauth._clients[provider.issuer]
+
+    except (httpx.HTTPStatusError, ValueError) as e:
+        logger.error(f"Failed to configure OIDC provider {provider.issuer}: {e}")
+        # Raise a runtime error to be caught by the calling endpoint
+        raise RuntimeError(f"Failed to configure OIDC provider {provider.issuer}") from e
 
 def log_token_information(token: Dict[str, Any], provider_name: str, user_email: str = None):
     """Log detailed information about access and ID tokens for debugging and auditing"""
@@ -223,125 +211,15 @@ async def process_auth_response(request: Request, provider_name: str):
         if not provider:
             raise ValueError(f"OIDC provider '{provider_name}' not found in database")
         
-        # Check if client is already registered, if not register it with current scopes
-        try:
-            client = oauth._clients.get(provider.issuer)
-        except (AttributeError, KeyError):
-            client = None
-            
-        if client is None:
-            logger.info(f"OAuth client not found for provider '{provider.issuer}', registering with scopes: {provider.scopes}")
-            register_oidc_provider(provider)
-            client = oauth._clients.get(provider.issuer)
-            
+        # Ensure the client is registered, with all the necessary fixes.
+        client = await ensure_oidc_client_registered(provider)
         if client is None:
             raise ValueError(f"Failed to register OAuth client for provider '{provider.issuer}'")
         
-        # Get the authorization token with enhanced error handling for JWKS validation issues
-        try:
-            token = await client.authorize_access_token(request)
-        except Exception as token_error:
-            error_msg = str(token_error).lower()
-            
-            # Check for JWKS validation errors (like duplicate key IDs, invalid format, etc.)
-            if ("invalid json web key set" in error_msg or 
-                "jwks" in error_msg or 
-                "duplicate" in error_msg and "key" in error_msg or
-                "json web key" in error_msg or
-                "key set" in error_msg):
-                
-                logger.warning(f"JWKS validation error detected: {str(token_error)}")
-                logger.info("Attempting to validate and fix JWKS issues...")
-                
-                try:
-                    # Get the well-known configuration to find the JWKS URL
-                    async with httpx.AsyncClient() as http_client:
-                        resp = await http_client.get(provider.well_known_url)
-                        resp.raise_for_status()
-                        well_known = resp.json()
-                        jwks_uri = well_known.get('jwks_uri')
-                        
-                        if jwks_uri:
-                            # Use enhanced JWKS validation and fixing
-                            logger.info(f"Validating and fixing JWKS from: {jwks_uri}")
-                            fixed_jwks = await validate_and_fix_jwks(jwks_uri)
-                            
-                            # Register client with custom fixed JWKS
-                            oauth.register(
-                                name=f"{provider.issuer}_validated_jwks",
-                                client_id=provider.client_id,
-                                client_secret=provider.client_secret,
-                                server_metadata_url=provider.well_known_url,
-                                client_kwargs={
-                                    "scope": provider.scopes
-                                },
-                                jwks=fixed_jwks  # Use our validated and fixed JWKS
-                            )
-                            
-                            fixed_client = oauth._clients[f"{provider.issuer}_validated_jwks"]
-                            token = await fixed_client.authorize_access_token(request)
-                            logger.info("Successfully authenticated using validated and fixed JWKS")
-                        else:
-                            logger.error("No jwks_uri found in well-known configuration")
-                            raise token_error
-                            
-                except Exception as jwks_fix_error:
-                    logger.error(f"Failed to validate and fix JWKS: {jwks_fix_error}")
-                    
-                    # Try the simpler fix as fallback
-                    logger.info("Attempting simple JWKS duplicate key fix as fallback...")
-                    try:
-                        async with httpx.AsyncClient() as http_client:
-                            resp = await http_client.get(provider.well_known_url)
-                            resp.raise_for_status()
-                            well_known = resp.json()
-                            jwks_uri = well_known.get('jwks_uri')
-                            
-                            if jwks_uri:
-                                fixed_jwks = await fix_duplicate_jwks(jwks_uri)
-                                
-                                # Register client with simple fix
-                                oauth.register(
-                                    name=f"{provider.issuer}_simple_fix",
-                                    client_id=provider.client_id,
-                                    client_secret=provider.client_secret,
-                                    server_metadata_url=provider.well_known_url,
-                                    client_kwargs={
-                                        "scope": provider.scopes
-                                    },
-                                    jwks=fixed_jwks
-                                )
-                                
-                                simple_client = oauth._clients[f"{provider.issuer}_simple_fix"]
-                                token = await simple_client.authorize_access_token(request)
-                                logger.info("Successfully authenticated using simple JWKS fix")
-                            else:
-                                raise token_error
-                    except Exception as simple_fix_error:
-                        logger.error(f"Simple JWKS fix also failed: {simple_fix_error}")
-                        raise token_error
-                    
-            elif "use" in error_msg and "not valid" in error_msg:
-                logger.warning(f"JWT key validation issue detected: {str(token_error)}")
-                # For Skoda/VW Group OIDC, try with different token endpoint method
-                try:
-                    # Re-register client with different auth method but keep configured scopes
-                    oauth.register(
-                        name=f"{provider.issuer}_fallback",
-                        client_id=provider.client_id,
-                        client_secret=provider.client_secret,
-                        server_metadata_url=provider.well_known_url,
-                        client_kwargs={
-                            "scope": provider.scopes
-                        },
-                        token_endpoint_auth_method='client_secret_basic'
-                    )
-                    fallback_client = oauth._clients[f"{provider.issuer}_fallback"]
-                    token = await fallback_client.authorize_access_token(request)
-                except Exception:
-                    raise token_error
-            else:
-                raise token_error
+        # Get the authorization token. If this fails, it will raise an exception
+        # that will be caught by the main try/except block. The complex fallback
+        # logic is no longer needed because the client is now registered correctly.
+        token = await client.authorize_access_token(request)
         
         # Log detailed token information for debugging and auditing
         log_token_information(token, provider_name)
