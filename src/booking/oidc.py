@@ -72,104 +72,75 @@ async def fix_duplicate_jwks(jwks_url: str) -> Dict[str, Any]:
 
 async def validate_and_fix_jwks(jwks_url: str) -> Dict[str, Any]:
     """
-    Enhanced JWKS validation and fixing function that handles various JWKS issues
-    including duplicate keys, missing fields, and format problems.
+    Enhanced JWKS validation and fixing function that handles various JWKS issues.
+    This version ensures each key is unique by its 'kid' and removes the 'use'
+    parameter to make it more compatible with authlib, addressing issues with
+    providers that send duplicate key IDs (e.g., for 'sig' and 'enc' uses).
     """
     try:
         logger.info(f"Validating and fixing JWKS from: {jwks_url}")
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.get(jwks_url)
             response.raise_for_status()
-            
+
             # Log raw response for debugging
             raw_content = response.text
             logger.debug(f"Raw JWKS response (first 500 chars): {raw_content[:500]}")
-            
+
             try:
                 jwks = response.json()
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON in JWKS response: {e}")
                 raise ValueError(f"JWKS response is not valid JSON: {e}")
-            
-            if not isinstance(jwks, dict):
-                logger.error(f"JWKS response is not a JSON object: {type(jwks)}")
-                raise ValueError("JWKS response must be a JSON object")
-                
-            if 'keys' not in jwks:
-                logger.error("JWKS response missing 'keys' field")
-                raise ValueError("JWKS response missing 'keys' field")
-                
-            if not isinstance(jwks['keys'], list):
-                logger.error(f"JWKS 'keys' field is not an array: {type(jwks['keys'])}")
-                raise ValueError("JWKS 'keys' field must be an array")
-            
+
+            if not isinstance(jwks, dict) or 'keys' not in jwks or not isinstance(jwks['keys'], list):
+                raise ValueError("JWKS response must be a JSON object with a 'keys' array.")
+
             # Track issues and fixes
             issues_found = []
-            seen_kids = {}
-            fixed_keys = []
-            
+            unique_keys = {}  # Use a dict to store unique keys by their kid
+
             for i, key in enumerate(jwks['keys']):
                 if not isinstance(key, dict):
-                    issues_found.append(f"Key {i} is not an object")
+                    issues_found.append(f"Key {i} is not an object, skipping.")
                     continue
-                
+
                 # Check required fields
-                missing_fields = []
-                for required_field in ['kty', 'kid']:
-                    if not key.get(required_field):
-                        missing_fields.append(required_field)
-                
-                if missing_fields:
-                    issues_found.append(f"Key {i} missing required fields: {missing_fields}")
-                    logger.warning(f"Skipping JWKS key {i} due to missing fields: {missing_fields}")
+                if not all(key.get(f) for f in ['kty', 'kid']):
+                    issues_found.append(f"Key {i} missing 'kty' or 'kid', skipping.")
                     continue
-                
+
                 kid = key.get('kid')
-                use = key.get('use', 'unknown')
-                alg = key.get('alg', 'unknown')
-                kty = key.get('kty')
-                
-                # Handle duplicate kid
-                if kid in seen_kids:
-                    original_kid = kid
-                    new_kid = f"{kid}_{use}_{alg}"
-                    key = key.copy()  # Don't modify original
-                    key['kid'] = new_kid
-                    issues_found.append(f"Duplicate kid '{original_kid}' fixed to '{new_kid}'")
-                    logger.info(f"Fixed duplicate JWKS key ID: {original_kid} -> {new_kid} (use: {use}, alg: {alg})")
-                
-                seen_kids[kid] = True
-                
-                # Validate key type specific fields
-                if kty == 'RSA':
-                    required_rsa_fields = ['n', 'e']
-                    missing_rsa = [f for f in required_rsa_fields if not key.get(f)]
-                    if missing_rsa:
-                        issues_found.append(f"RSA key {kid} missing fields: {missing_rsa}")
-                        logger.warning(f"RSA key {kid} missing required fields: {missing_rsa}")
-                        continue
-                elif kty == 'EC':
-                    required_ec_fields = ['x', 'y', 'crv']
-                    missing_ec = [f for f in required_ec_fields if not key.get(f)]
-                    if missing_ec:
-                        issues_found.append(f"EC key {kid} missing fields: {missing_ec}")
-                        logger.warning(f"EC key {kid} missing required fields: {missing_ec}")
-                        continue
-                
-                fixed_keys.append(key)
-            
-            if not fixed_keys:
-                raise ValueError("No valid keys found in JWKS after validation")
-            
+
+                # If we haven't seen this kid before, process and add it.
+                # This effectively takes the first key found for a given kid.
+                if kid not in unique_keys:
+                    key_copy = key.copy()
+
+                    # Remove the 'use' parameter to avoid strict validation issues in authlib.
+                    # A key without 'use' can be used for signing.
+                    if 'use' in key_copy:
+                        original_use = key_copy.pop('use')
+                        issues_found.append(f"Removed 'use: {original_use}' from key {kid}.")
+                        logger.info(f"Removed 'use' parameter ('{original_use}') from key {kid} to improve compatibility.")
+
+                    unique_keys[kid] = key_copy
+                else:
+                    issues_found.append(f"Skipping duplicate key with kid '{kid}'.")
+
+            if not unique_keys:
+                raise ValueError("No valid keys found in JWKS after validation and deduplication.")
+
+            fixed_keys = list(unique_keys.values())
             fixed_jwks = {'keys': fixed_keys}
-            
+
             if issues_found:
-                logger.warning(f"JWKS validation found {len(issues_found)} issues: {issues_found}")
-            
-            logger.info(f"JWKS validation complete: {len(fixed_keys)} valid keys, {len(issues_found)} issues fixed")
+                logger.warning(f"JWKS validation found and addressed {len(issues_found)} issues: {issues_found}")
+
+            logger.info(f"JWKS validation complete: {len(fixed_keys)} unique, valid keys prepared.")
             return fixed_jwks
-            
+
     except Exception as e:
         logger.error(f"Failed to validate and fix JWKS from {jwks_url}: {e}")
         raise e
