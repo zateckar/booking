@@ -2,6 +2,7 @@ from authlib.integrations.starlette_client import OAuth
 from authlib.common.errors import AuthlibBaseError
 from fastapi import Request
 import logging
+import os
 import json
 import httpx
 from urllib.parse import unquote, urlencode
@@ -16,6 +17,48 @@ from .claims_service import ClaimsMappingService, ClaimsProcessingError
 oauth = OAuth()
 logger = logging.getLogger(__name__)
 
+
+def get_secure_redirect_uri(request: Request, endpoint: str, **path_params) -> str:
+    """
+    Generate a secure redirect URI, ensuring HTTPS in production environments.
+    
+    This function detects if the app is running behind a reverse proxy with HTTPS
+    termination and ensures the redirect URI uses HTTPS scheme when appropriate.
+    """
+    # Generate the base URI using the request's url_for method
+    redirect_uri = str(request.url_for(endpoint, **path_params))
+    
+    # Check if we should force HTTPS based on various indicators
+    force_https = False
+    
+    # Method 1: Check for explicit environment variable
+    if os.getenv("FORCE_HTTPS_REDIRECTS", "").lower() in ("true", "1", "yes"):
+        force_https = True
+        logger.debug("Force HTTPS enabled via FORCE_HTTPS_REDIRECTS environment variable")
+    
+    # Method 2: Check for reverse proxy headers indicating HTTPS termination
+    elif request.headers.get("x-forwarded-proto") == "https":
+        force_https = True
+        logger.debug("HTTPS detected via X-Forwarded-Proto header")
+    
+    elif request.headers.get("x-forwarded-ssl") == "on":
+        force_https = True
+        logger.debug("HTTPS detected via X-Forwarded-Ssl header")
+    
+    # Method 3: Check if running in containerized environment (common production setup)
+    elif os.getenv("DOCKER_CONTAINER") or os.path.exists("/.dockerenv"):
+        # In container, assume production deployment with HTTPS termination
+        # unless explicitly running in development mode
+        if os.getenv("ENVIRONMENT", "").lower() not in ("development", "dev", "local"):
+            force_https = True
+            logger.debug("HTTPS assumed for containerized production deployment")
+    
+    # Apply HTTPS if determined necessary
+    if force_https and redirect_uri.startswith("http://"):
+        redirect_uri = redirect_uri.replace("http://", "https://", 1)
+        logger.info(f"Redirect URI scheme changed to HTTPS for production: {redirect_uri}")
+    
+    return redirect_uri
 
 
 async def validate_and_fix_jwks(jwks_url: str) -> Dict[str, Any]:
@@ -213,10 +256,14 @@ async def process_auth_response(request: Request, provider_name: str):
         if client is None:
             raise ValueError(f"Failed to register OAuth client for provider '{provider.issuer}'")
         
+        # Explicitly construct the redirect_uri to ensure it's HTTPS in production.
+        # This is crucial for the token exchange step when behind a reverse proxy.
+        redirect_uri = get_secure_redirect_uri(request, "auth_oidc", provider_name=provider_name)
+
         # Get the authorization token. If this fails, it will raise an exception
         # that will be caught by the main try/except block. The complex fallback
         # logic is no longer needed because the client is now registered correctly.
-        token = await client.authorize_access_token(request)
+        token = await client.authorize_access_token(request, redirect_uri=redirect_uri)
         
         # Log detailed token information for debugging and auditing
         log_token_information(token, provider_name)
