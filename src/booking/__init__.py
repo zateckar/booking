@@ -13,7 +13,7 @@ from . import models
 from .database import engine, get_db
 from .routers.admin import router as admin_router
 from .routers import bookings, users, parking_lots, auth
-from .oidc import oauth, process_auth_response
+from .oidc import oauth, process_auth_response, validate_and_fix_jwks
 from .scheduler import start_scheduler, stop_scheduler
 from .logging_config import setup_logging, get_logger
 
@@ -194,7 +194,7 @@ async def login_oidc(request: Request, provider_name: str):
         if client is None:
             logger.debug(f"Client for provider {provider.issuer} not found, registering.")
 
-            # Some OIDC providers might have non-compliant JWKS (e.g. wrong 'use' parameter).
+            # Some OIDC providers might have non-compliant JWKS (e.g. wrong 'use' parameter or duplicate kids).
             # We fetch the server metadata and JWKS manually to inspect and fix it
             # before registering the client. This makes the first login for a provider
             # a bit slower, but it's cached afterward.
@@ -206,18 +206,14 @@ async def login_oidc(request: Request, provider_name: str):
 
                     jwks_uri = server_metadata.get('jwks_uri')
                     if jwks_uri:
-                        resp = await http_client.get(jwks_uri)
-                        resp.raise_for_status()
-                        jwks = resp.json()
-                        # Fix for keys with incorrect 'use' parameter.
-                        # By removing 'use', we allow authlib to use the key for signature
-                        # verification, bypassing the strict 'sig' check.
-                        for key in jwks.get('keys', []):
-                            if 'use' in key:
-                                del key['use']
-                        server_metadata['jwks'] = jwks
-                except httpx.HTTPStatusError as e:
-                    logger.error(f"Failed to fetch OIDC metadata for {provider.issuer}: {e}")
+                        # Use the robust JWKS validation and fixing function from oidc.py
+                        # This handles duplicate kids and removes 'use' parameter.
+                        fixed_jwks = await validate_and_fix_jwks(jwks_uri)
+                        server_metadata['jwks'] = fixed_jwks
+                        # Remove jwks_uri to ensure our fixed jwks is used by authlib
+                        server_metadata.pop('jwks_uri', None)
+                except (httpx.HTTPStatusError, ValueError) as e:
+                    logger.error(f"Failed to fetch or fix OIDC metadata for {provider.issuer}: {e}")
                     raise HTTPException(status_code=500, detail="Failed to configure OIDC provider.")
 
             # Manually map server metadata to authlib's init parameters
