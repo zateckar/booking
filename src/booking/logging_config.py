@@ -138,11 +138,11 @@ def setup_logging():
     """Configure application logging"""
     # Create database handler
     db_handler = DatabaseLogHandler()
-    db_handler.setLevel(logging.DEBUG)  # Start with DEBUG, will be updated by stored config
+    db_handler.setLevel(logging.WARNING)  # Start with DEBUG, will be updated by stored config
     
     # Create console handler for development
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)  # Start with DEBUG, will be updated by stored config
+    console_handler.setLevel(logging.WARNING)  # Start with DEBUG, will be updated by stored config
     
     # Create timezone-aware formatter
     formatter = TimezoneAwareFormatter(
@@ -152,7 +152,7 @@ def setup_logging():
     
     # Configure root logger
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(logging.INFO)
     root_logger.addHandler(db_handler)
     root_logger.addHandler(console_handler)
     

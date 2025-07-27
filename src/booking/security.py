@@ -20,7 +20,7 @@ passlib_logger.setLevel(logging.ERROR)
 
 logger = get_logger("security")
 
-SECRET_KEY = "b34195f2-f1c8-407f-b84e-1102988e0fd8"  # Change this in a real application
+SECRET_KEY = "4636ED609F77A64C625B1B81EBBD032B2028BF01DE70F994A91609E664A474D3"  # Change this in a real application
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120  # 2 hours - increased from 30 minutes to reduce frequent logouts
 REFRESH_TOKEN_EXPIRE_DAYS = 7

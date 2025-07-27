@@ -36,9 +36,13 @@ class AddLicensePlatesColumnsMigration(BaseMigration):
         
         # Insert the license_plates_list column configuration
         insert_sql = text("""
-        INSERT INTO report_columns (column_name, display_label, column_type, data_type, is_available, sort_order)
-        VALUES (:column_name, :display_label, :column_type, :data_type, :is_available, :sort_order)
+        INSERT INTO report_columns (column_name, display_label, column_type, data_type, is_available, sort_order, created_at, updated_at)
+        VALUES (:column_name, :display_label, :column_type, :data_type, :is_available, :sort_order, :created_at, :updated_at)
         """)
+        
+        # Get current timestamp for created_at and updated_at
+        from datetime import datetime, timezone
+        current_time = datetime.now(timezone.utc)
         
         # Add license_plates_list column
         self.session.execute(insert_sql, {
@@ -47,7 +51,9 @@ class AddLicensePlatesColumnsMigration(BaseMigration):
             'column_type': 'static',
             'data_type': 'array',
             'is_available': True,
-            'sort_order': 105  # Put after other standard columns
+            'sort_order': 105,  # Put after other standard columns
+            'created_at': current_time,
+            'updated_at': current_time
         })
         
         # Also ensure the count column exists with better labeling
@@ -62,7 +68,9 @@ class AddLicensePlatesColumnsMigration(BaseMigration):
                 'column_type': 'static',
                 'data_type': 'number',
                 'is_available': True,
-                'sort_order': 104
+                'sort_order': 104,
+                'created_at': current_time,
+                'updated_at': current_time
             })
         
         # Update existing 'license_plates' column to have better labeling for backward compatibility

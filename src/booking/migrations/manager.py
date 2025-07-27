@@ -822,17 +822,32 @@ class MigrationManager:
             # Calculate execution time
             execution_time_ms = int((time.time() - start_time) * 1000)
             
-            # Record the migration as applied
-            migration_record = SchemaMigration(
-                version=migration.version,
-                description=migration.description,
-                checksum=migration.get_checksum(),
-                class_name=migration.__class__.__name__,
-                execution_time_ms=execution_time_ms,
-                status="applied"
-            )
+            # Check if migration record already exists (from previous failed attempts)
+            existing_record = self.session.query(SchemaMigration).filter(
+                SchemaMigration.version == migration.version
+            ).first()
             
-            self.session.add(migration_record)
+            if existing_record:
+                # Update existing record
+                existing_record.description = migration.description
+                existing_record.checksum = migration.get_checksum()
+                existing_record.class_name = migration.__class__.__name__
+                existing_record.execution_time_ms = execution_time_ms
+                existing_record.status = "applied"
+                existing_record.error_message = None  # Clear any previous error
+                # applied_at will be updated automatically by the model
+            else:
+                # Create new record
+                migration_record = SchemaMigration(
+                    version=migration.version,
+                    description=migration.description,
+                    checksum=migration.get_checksum(),
+                    class_name=migration.__class__.__name__,
+                    execution_time_ms=execution_time_ms,
+                    status="applied"
+                )
+                self.session.add(migration_record)
+            
             self.session.commit()
             
             print(f"✅ Migration {migration.version} applied successfully ({execution_time_ms}ms)")
