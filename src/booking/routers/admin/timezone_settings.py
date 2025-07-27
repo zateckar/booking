@@ -54,7 +54,8 @@ def update_timezone(
         
         # Validate timezone
         available_timezones = timezone_service.get_available_timezones()
-        if request.timezone not in available_timezones:
+        available_timezone_values = [tz['value'] for tz in available_timezones]
+        if request.timezone not in available_timezone_values:
             raise HTTPException(status_code=400, detail="Invalid timezone")
         
         # Update timezone

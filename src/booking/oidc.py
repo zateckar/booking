@@ -257,14 +257,10 @@ async def process_auth_response(request: Request, provider_name: str):
         if client is None:
             raise ValueError(f"Failed to register OAuth client for provider '{provider.issuer}'")
         
-        # Explicitly construct the redirect_uri to ensure it's HTTPS in production.
-        # This is crucial for the token exchange step when behind a reverse proxy.
-        redirect_uri = get_secure_redirect_uri(request, "auth_oidc", provider_name=provider_name)
-
-        # Get the authorization token. If this fails, it will raise an exception
-        # that will be caught by the main try/except block. The complex fallback
-        # logic is no longer needed because the client is now registered correctly.
-        token = await client.authorize_access_token(request, redirect_uri=redirect_uri)
+        # Get the authorization token. The request object already contains the redirect_uri
+        # information that authlib will automatically extract and use for token exchange.
+        # Passing it explicitly causes a "multiple values for keyword argument" error.
+        token = await client.authorize_access_token(request)
         
         # Log detailed token information for debugging and auditing
         log_token_information(token, provider_name)
@@ -436,4 +432,3 @@ async def get_oidc_logout_url(provider_name: str, id_token: Optional[str] = None
     except Exception as e:
         logger.error(f"Error generating OIDC logout URL for {provider_name}: {e}")
         return None
-
