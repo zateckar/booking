@@ -339,18 +339,36 @@ const AdminAPI = {
         },
 
         async generate(data) {
+            // Ensure data includes the new optional date fields
+            const requestData = {
+                selected_columns: data.selected_columns,
+                months: data.months || 2,
+                start_date: data.start_date || null,
+                end_date: data.end_date || null,
+                include_excel: data.include_excel || false
+            };
+            
             return await AdminAPI.makeRequest('/api/admin/dynamic-reports/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(requestData)
             });
         },
 
         async generateExcel(data) {
+            // Ensure data includes the new optional date fields
+            const requestData = {
+                selected_columns: data.selected_columns,
+                months: data.months || 2,
+                start_date: data.start_date || null,
+                end_date: data.end_date || null,
+                include_excel: true
+            };
+            
             return await AdminAPI.makeRequest('/api/admin/dynamic-reports/generate/excel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(requestData)
             });
         },
 
@@ -372,8 +390,18 @@ const AdminAPI = {
             });
         },
 
-        async generateFromTemplate(templateId, months = 2) {
-            return await AdminAPI.makeRequest(`/api/admin/dynamic-reports/templates/${templateId}/generate?months=${months}`, {
+        async generateFromTemplate(templateId, options = {}) {
+            // Support both legacy months parameter and new date range options
+            const params = new URLSearchParams();
+            if (options.months !== undefined) {
+                params.append('months', options.months);
+            }
+            if (options.include_excel !== undefined) {
+                params.append('include_excel', options.include_excel);
+            }
+            
+            const queryString = params.toString();
+            return await AdminAPI.makeRequest(`/api/admin/dynamic-reports/templates/${templateId}/generate${queryString ? '?' + queryString : ''}`, {
                 method: 'POST'
             });
         },

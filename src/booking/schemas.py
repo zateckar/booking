@@ -461,7 +461,27 @@ class ClaimsDiscoveryResponse(BaseModel):
 class DynamicReportRequest(BaseModel):
     selected_columns: list[str]
     months: int = 2
+    start_date: datetime | None = None
+    end_date: datetime | None = None
     include_excel: bool = False
+
+    @field_validator('start_date', 'end_date')
+    @classmethod
+    def validate_timezone_aware(cls, v: datetime | None) -> datetime | None:
+        """Ensure datetime is timezone-aware, default to UTC if naive"""
+        if v is None:
+            return v
+        if v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
+
+    @model_validator(mode='after')
+    def validate_date_range(self) -> 'DynamicReportRequest':
+        """Validate that start_date is before end_date when both are provided"""
+        if self.start_date and self.end_date:
+            if self.start_date >= self.end_date:
+                raise ValueError('Start date must be before end date')
+        return self
 
 
 class DynamicReportColumn(BaseModel):

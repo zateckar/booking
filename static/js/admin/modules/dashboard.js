@@ -64,9 +64,8 @@ const AdminDashboard = {
         }
 
         try {
-            // Get period from filter
-            const periodFilter = document.getElementById('dashboard-period-filter');
-            const months = periodFilter ? parseInt(periodFilter.value) : 2;
+            // Get date parameters based on current UI settings
+            const dateParams = this._getDashboardDateParameters();
 
             // Load dynamic reports data instead of static reports
             const dynamicReportsResponse = await AdminAPI.dynamicReports.getColumns();
@@ -110,6 +109,105 @@ const AdminDashboard = {
                 this.hideLoadingState();
             }
         }
+    },
+
+    // Get dashboard date parameters based on current UI settings
+    _getDashboardDateParameters() {
+        const useCustomDates = document.getElementById('dashboard-use-custom-dates')?.checked || false;
+        
+        if (useCustomDates) {
+            const startDateElement = document.getElementById('dashboard-start-date');
+            const endDateElement = document.getElementById('dashboard-end-date');
+            
+            if (startDateElement?.value && endDateElement?.value) {
+                const startDate = new Date(startDateElement.value);
+                const endDate = new Date(endDateElement.value);
+                
+                // Set time to beginning and end of day respectively
+                startDate.setHours(0, 0, 0, 0);
+                endDate.setHours(23, 59, 59, 999);
+                
+                return {
+                    start_date: startDate.toISOString(),
+                    end_date: endDate.toISOString(),
+                    months: 2 // Keep default for backward compatibility
+                };
+            } else {
+                AdminNotifications.showError('Please provide both start and end dates for custom date range');
+                throw new Error('Missing custom date range values');
+            }
+        } else {
+            const periodFilter = document.getElementById('dashboard-period-filter');
+            const months = periodFilter ? parseInt(periodFilter.value) : 2;
+            
+            return {
+                months: months,
+                start_date: null,
+                end_date: null
+            };
+        }
+    },
+
+    // Toggle date selection mode
+    toggleDateSelectionMode() {
+        const useCustomDates = document.getElementById('dashboard-use-custom-dates')?.checked || false;
+        const monthsSection = document.getElementById('dashboard-months-selection');
+        const customDatesSection = document.getElementById('dashboard-custom-dates');
+        
+        if (monthsSection && customDatesSection) {
+            if (useCustomDates) {
+                monthsSection.style.display = 'none';
+                customDatesSection.style.display = 'flex';
+                this._setDefaultCustomDashboardDates();
+            } else {
+                monthsSection.style.display = 'block';
+                customDatesSection.style.display = 'none';
+            }
+        }
+    },
+
+    // Set sensible defaults for custom date inputs
+    _setDefaultCustomDashboardDates() {
+        const startDateElement = document.getElementById('dashboard-start-date');
+        const endDateElement = document.getElementById('dashboard-end-date');
+        
+        if (startDateElement && endDateElement) {
+            const today = new Date();
+            const twoMonthsAgo = new Date();
+            twoMonthsAgo.setMonth(today.getMonth() - 2);
+            
+            // Format dates as YYYY-MM-DD for input[type="date"]
+            startDateElement.value = twoMonthsAgo.toISOString().split('T')[0];
+            endDateElement.value = today.toISOString().split('T')[0];
+        }
+    },
+
+    // Validate custom date range
+    validateCustomDateRange() {
+        const startDateElement = document.getElementById('dashboard-start-date');
+        const endDateElement = document.getElementById('dashboard-end-date');
+        
+        if (startDateElement?.value && endDateElement?.value) {
+            const startDate = new Date(startDateElement.value);
+            const endDate = new Date(endDateElement.value);
+            
+            if (startDate >= endDate) {
+                AdminNotifications.showError('Start date must be before end date');
+                return false;
+            }
+            
+            // Check if range is reasonable (not more than 2 years)
+            const diffTime = Math.abs(endDate - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 730) { // 2 years
+                AdminNotifications.showWarning('Selected date range is longer than 2 years. Dashboard may take longer to load.');
+            }
+            
+            return true;
+        }
+        
+        return false;
     },
 
     // Load system status information

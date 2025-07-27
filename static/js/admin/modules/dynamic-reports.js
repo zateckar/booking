@@ -100,13 +100,12 @@ const AdminDynamicReports = {
         }
         
         try {
-            const monthsElement = document.getElementById('dynamic-report-months');
-            const months = monthsElement ? (monthsElement.value !== '' ? parseInt(monthsElement.value) : 2) : 2;
             const columnNames = this.selectedColumns.map(col => col.column_name);
+            const reportParams = this._getReportDateParameters();
             
             const response = await AdminAPI.dynamicReports.generate({
                 selected_columns: columnNames,
-                months: months
+                ...reportParams
             });
 
             if (response.ok) {
@@ -118,6 +117,105 @@ const AdminDynamicReports = {
         } catch (error) {
             AdminNotifications.handleApiError(error, 'Error generating dynamic report');
         }
+    },
+
+    // Get report date parameters based on current UI settings
+    _getReportDateParameters() {
+        const useCustomDates = document.getElementById('use-custom-dates')?.checked || false;
+        
+        if (useCustomDates) {
+            const startDateElement = document.getElementById('custom-start-date');
+            const endDateElement = document.getElementById('custom-end-date');
+            
+            if (startDateElement?.value && endDateElement?.value) {
+                const startDate = new Date(startDateElement.value);
+                const endDate = new Date(endDateElement.value);
+                
+                // Set time to beginning and end of day respectively
+                startDate.setHours(0, 0, 0, 0);
+                endDate.setHours(23, 59, 59, 999);
+                
+                return {
+                    start_date: startDate.toISOString(),
+                    end_date: endDate.toISOString(),
+                    months: 2 // Keep default for backward compatibility
+                };
+            } else {
+                AdminNotifications.showError('Please provide both start and end dates for custom date range');
+                throw new Error('Missing custom date range values');
+            }
+        } else {
+            const monthsElement = document.getElementById('dynamic-report-months');
+            const months = monthsElement ? (monthsElement.value !== '' ? parseInt(monthsElement.value) : 2) : 2;
+            
+            return {
+                months: months,
+                start_date: null,
+                end_date: null
+            };
+        }
+    },
+
+    // Toggle date selection mode
+    toggleDateSelectionMode() {
+        const useCustomDates = document.getElementById('use-custom-dates')?.checked || false;
+        const monthsSection = document.getElementById('months-selection-section');
+        const customDatesSection = document.getElementById('custom-dates-selection-section');
+        
+        if (monthsSection && customDatesSection) {
+            if (useCustomDates) {
+                monthsSection.style.display = 'none';
+                customDatesSection.style.display = 'block';
+                this._setDefaultCustomDates();
+            } else {
+                monthsSection.style.display = 'block';
+                customDatesSection.style.display = 'none';
+            }
+        }
+    },
+
+    // Set sensible defaults for custom date inputs
+    _setDefaultCustomDates() {
+        const startDateElement = document.getElementById('custom-start-date');
+        const endDateElement = document.getElementById('custom-end-date');
+        
+        if (startDateElement && endDateElement) {
+            const today = new Date();
+            const twoMonthsAgo = new Date();
+            twoMonthsAgo.setMonth(today.getMonth() - 2);
+            
+            // Format dates as YYYY-MM-DD for input[type="date"]
+            startDateElement.value = twoMonthsAgo.toISOString().split('T')[0];
+            endDateElement.value = today.toISOString().split('T')[0];
+        }
+    },
+
+    // Validate custom date range
+    validateCustomDateRange() {
+        const startDateElement = document.getElementById('custom-start-date');
+        const endDateElement = document.getElementById('custom-end-date');
+        
+        if (startDateElement?.value && endDateElement?.value) {
+            const startDate = new Date(startDateElement.value);
+            const endDate = new Date(endDateElement.value);
+            
+            if (startDate >= endDate) {
+                AdminNotifications.showError('Start date must be before end date');
+                return false;
+            }
+            
+            // Check if range is reasonable (not more than 2 years)
+            const diffTime = Math.abs(endDate - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 730) { // 2 years
+                AdminNotifications.showWarning('Selected date range is longer than 2 years. Report generation may take longer.');
+            }
+            
+            return true;
+        }
+        
+        return false;
     },
 
     // Display dynamic report

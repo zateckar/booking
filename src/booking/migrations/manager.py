@@ -518,7 +518,9 @@ class MigrationManager:
     
     def get_applied_migrations(self) -> Dict[str, SchemaMigration]:
         """Get all applied migrations from the database."""
-        applied = self.session.query(SchemaMigration).all()
+        applied = self.session.query(SchemaMigration).filter(
+            SchemaMigration.status == "applied"
+        ).all()
         return {migration.version: migration for migration in applied}
     
     def get_pending_migrations(self) -> List[Type[BaseMigration]]:
@@ -639,11 +641,20 @@ class MigrationManager:
                                 )
                         else:
                             # Check if migration file actually exists on filesystem
-                            migration_file_path = Path(self.migrations_dir) / f"{version}.py"
-                            if migration_file_path.exists():
+                            # Look for files that start with the version number
+                            migration_pattern = f"{version}_*.py"
+                            migration_exact = f"{version}.py"
+                            migrations_path = Path(self.migrations_dir)
+                            
+                            # Check both exact match and pattern match
+                            exact_file = migrations_path / migration_exact
+                            pattern_files = list(migrations_path.glob(migration_pattern))
+                            
+                            if exact_file.exists() or pattern_files:
                                 # File exists but wasn't discovered - this is unusual
+                                actual_file = exact_file if exact_file.exists() else pattern_files[0]
                                 errors.append(
-                                    f"Applied migration {version} file exists but was not discovered "
+                                    f"Applied migration {version} file exists ({actual_file.name}) but was not discovered "
                                     f"(possible discovery logic issue)"
                                 )
                             else:
@@ -651,7 +662,7 @@ class MigrationManager:
                                 missing_files.append(version)
                                 errors.append(
                                     f"Applied migration {version} file not found in migration directory "
-                                    f"({migration_file_path})"
+                                    f"(expected {migration_exact} or {migration_pattern})"
                                 )
                     
                     continue

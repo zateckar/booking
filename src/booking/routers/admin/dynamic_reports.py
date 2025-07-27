@@ -58,10 +58,18 @@ def generate_dynamic_report(
         
         report_data = reports_service.generate_dynamic_report(
             selected_columns=request.selected_columns,
-            months=request.months
+            months=request.months,
+            start_date=request.start_date,
+            end_date=request.end_date
         )
         
-        logger.info(f"Generated dynamic report with {len(request.selected_columns)} columns")
+        date_info = ""
+        if request.start_date and request.end_date:
+            date_info = f" from {request.start_date.date()} to {request.end_date.date()}"
+        else:
+            date_info = f" for {request.months} months"
+        
+        logger.info(f"Generated dynamic report with {len(request.selected_columns)} columns{date_info}")
         return report_data
         
     except Exception as e:
@@ -85,7 +93,9 @@ def generate_dynamic_excel_report(
         # Generate report data
         report_data = reports_service.generate_dynamic_report(
             selected_columns=request.selected_columns,
-            months=request.months
+            months=request.months,
+            start_date=request.start_date,
+            end_date=request.end_date
         )
         
         # Create Excel workbook

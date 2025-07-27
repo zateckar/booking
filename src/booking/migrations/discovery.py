@@ -692,8 +692,11 @@ class ClassExtractor:
                     if isinstance(attr, type):
                         self.logger.debug(f"Found class: {attr_name}")
                         
-                        # Check if it's a migration class
-                        if issubclass(attr, BaseMigration) and attr != BaseMigration:
+                        # Check if it's a migration class by checking inheritance by name/module
+                        # This avoids issues with class identity when imported from different contexts
+                        is_migration_class = self._is_migration_class(attr)
+                        
+                        if is_migration_class:
                             potential_classes.append((attr_name, attr))
                             self.logger.debug(f"Class {attr_name} is a migration class")
                             
@@ -748,6 +751,50 @@ class ClassExtractor:
                 self.logger.debug(f"Stack trace: {stack_trace}")
         
         return migration_classes, warnings
+    
+    def _is_migration_class(self, cls: type) -> bool:
+        """
+        Check if a class is a migration class by examining its inheritance hierarchy.
+        
+        This method checks inheritance by name and module rather than object identity
+        to avoid issues when BaseMigration is imported from different contexts.
+        
+        Args:
+            cls: The class to check
+            
+        Returns:
+            True if the class inherits from BaseMigration, False otherwise
+        """
+        try:
+            # Check if it's the BaseMigration class itself (exclude it)
+            if cls.__name__ == 'BaseMigration' and hasattr(cls, '__module__'):
+                if 'migrations.base' in cls.__module__:
+                    self.logger.debug(f"Excluding BaseMigration class itself: {cls}")
+                    return False
+            
+            # Check MRO (Method Resolution Order) for BaseMigration
+            for base_class in cls.__mro__:
+                # Check if this is a BaseMigration class by name and module
+                if (base_class.__name__ == 'BaseMigration' and 
+                    hasattr(base_class, '__module__') and 
+                    'migrations.base' in base_class.__module__):
+                    
+                    self.logger.debug(f"Class {cls.__name__} inherits from BaseMigration via {base_class}")
+                    return True
+            
+            # Also check required migration characteristics as a fallback
+            if (hasattr(cls, 'version') and 
+                hasattr(cls, 'up') and 
+                callable(getattr(cls, 'up', None))):
+                
+                self.logger.debug(f"Class {cls.__name__} has migration characteristics (version, up method)")
+                return True
+                
+            return False
+            
+        except Exception as e:
+            self.logger.debug(f"Error checking if {cls.__name__} is migration class: {e}")
+            return False
     
     def _validate_migration_class(self, migration_class: Type[BaseMigration], file_path: Path) -> List[str]:
         """
@@ -820,8 +867,9 @@ class ValidationHelper:
         self.logger.debug(f"Validating migration class structure: {class_name} (version: {version})")
         
         try:
-            # Validate class inheritance
-            if not issubclass(migration_class, BaseMigration):
+            # Validate class inheritance using the same approach as ClassExtractor
+            is_migration_class = self._is_migration_class(migration_class)
+            if not is_migration_class:
                 error = MigrationDiscoveryError(
                     version=version,
                     error_type=ValidationErrorType.INVALID_INHERITANCE.value,
@@ -1023,6 +1071,50 @@ class ValidationHelper:
             warnings=warnings,
             discovered_migrations=[migration_class] if is_valid else []
         )
+    
+    def _is_migration_class(self, cls: type) -> bool:
+        """
+        Check if a class is a migration class by examining its inheritance hierarchy.
+        
+        This method checks inheritance by name and module rather than object identity
+        to avoid issues when BaseMigration is imported from different contexts.
+        
+        Args:
+            cls: The class to check
+            
+        Returns:
+            True if the class inherits from BaseMigration, False otherwise
+        """
+        try:
+            # Check if it's the BaseMigration class itself (exclude it)
+            if cls.__name__ == 'BaseMigration' and hasattr(cls, '__module__'):
+                if 'migrations.base' in cls.__module__:
+                    self.logger.debug(f"Excluding BaseMigration class itself: {cls}")
+                    return False
+            
+            # Check MRO (Method Resolution Order) for BaseMigration
+            for base_class in cls.__mro__:
+                # Check if this is a BaseMigration class by name and module
+                if (base_class.__name__ == 'BaseMigration' and 
+                    hasattr(base_class, '__module__') and 
+                    'migrations.base' in base_class.__module__):
+                    
+                    self.logger.debug(f"Class {cls.__name__} inherits from BaseMigration via {base_class}")
+                    return True
+            
+            # Also check required migration characteristics as a fallback
+            if (hasattr(cls, 'version') and 
+                hasattr(cls, 'up') and 
+                callable(getattr(cls, 'up', None))):
+                
+                self.logger.debug(f"Class {cls.__name__} has migration characteristics (version, up method)")
+                return True
+                
+            return False
+            
+        except Exception as e:
+            self.logger.debug(f"Error checking if {cls.__name__} is migration class: {e}")
+            return False
     
     def validate_migration_instance(self, migration_instance: BaseMigration) -> ValidationResult:
         """

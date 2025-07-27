@@ -43,6 +43,9 @@ class DynamicReportsService:
         # Also discover dynamic columns from existing user profiles
         dynamic_columns = self._discover_dynamic_columns()
         
+        # Add built-in calculated columns
+        calculated_columns = self._get_built_in_calculated_columns()
+        
         # Convert to response format
         result = []
         for column in columns:
@@ -60,6 +63,11 @@ class DynamicReportsService:
         for dyn_col in dynamic_columns:
             if dyn_col["column_name"] not in configured_names:
                 result.append(dyn_col)
+        
+        # Add calculated columns that aren't already configured
+        for calc_col in calculated_columns:
+            if calc_col["column_name"] not in configured_names:
+                result.append(calc_col)
         
         logger.info(f"Found {len(result)} available report columns")
         return result
@@ -114,6 +122,19 @@ class DynamicReportsService:
             })
         
         return dynamic_columns
+    
+    def _get_built_in_calculated_columns(self) -> List[Dict[str, Any]]:
+        """Get built-in calculated columns that are available for reports"""
+        return [
+            {
+                "column_name": "days_with_at_least_one_booking",
+                "display_label": "Days with at least one booking",
+                "column_type": "calculated",
+                "data_type": "number",
+                "is_available": True,
+                "sort_order": 110  # Place it after other booking-related columns
+            }
+        ]
     
     def generate_dynamic_report(
         self, 
@@ -198,6 +219,7 @@ class DynamicReportsService:
                     'parking_lots_used': set(),
                     'license_plates_count': set(),
                     'license_plates_list': set(),
+                    'booking_dates': set(),
                     'first_booking': booking.start_time,
                     'last_booking': booking.start_time
                 }
@@ -211,6 +233,10 @@ class DynamicReportsService:
             if booking.license_plate:  # Only add non-empty license plates
                 user_stats[user_id]['license_plates_count'].add(booking.license_plate)
                 user_stats[user_id]['license_plates_list'].add(booking.license_plate)
+            
+            # Track unique booking dates (days with at least one booking)
+            booking_date = booking.start_time.date()
+            user_stats[user_id]['booking_dates'].add(booking_date)
             
             # Update booking date range
             if booking.start_time < user_stats[user_id]['first_booking']:
@@ -230,6 +256,12 @@ class DynamicReportsService:
             
             # Keep backward compatibility with the old 'license_plates' field
             stats['license_plates'] = stats['license_plates_count']
+            
+            # Calculate days with at least one booking
+            stats['days_with_at_least_one_booking'] = len(stats['booking_dates'])
+            
+            # Remove the temporary booking_dates set as it's not needed in the final output
+            del stats['booking_dates']
             
             stats['first_booking'] = stats['first_booking'].isoformat()
             stats['last_booking'] = stats['last_booking'].isoformat()
@@ -265,7 +297,7 @@ class DynamicReportsService:
         static_columns = {
             'user_id', 'email', 'is_admin', 'total_bookings', 'total_hours', 
             'avg_duration', 'parking_lots_used', 'license_plates', 'license_plates_count', 
-            'license_plates_list', 'first_booking', 'last_booking'
+            'license_plates_list', 'first_booking', 'last_booking', 'days_with_at_least_one_booking'
         }
         return column_name not in static_columns
     

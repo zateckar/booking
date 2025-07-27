@@ -32,6 +32,21 @@ const AdminLogs = {
         if (frontendSelect) {
             frontendSelect.value = config.frontend_log_level;
         }
+
+        // Update status badges
+        const currentBackendLevel = document.getElementById('current-backend-level');
+        const currentFrontendLevel = document.getElementById('current-frontend-level');
+        const configLastUpdated = document.getElementById('config-last-updated');
+        
+        if (currentBackendLevel) {
+            currentBackendLevel.textContent = config.backend_log_level;
+        }
+        if (currentFrontendLevel) {
+            currentFrontendLevel.textContent = config.frontend_log_level;
+        }
+        if (configLastUpdated) {
+            configLastUpdated.textContent = new Date().toLocaleString();
+        }
     },
 
     // Update log configuration
@@ -52,7 +67,7 @@ const AdminLogs = {
                     this.setFrontendLogLevel(frontend_level);
                 }
                 
-                AdminNotifications.show('Log configuration updated successfully', 'success');
+                AdminNotifications.showSuccess('Log configuration updated successfully');
                 
                 // Log the change
                 this.log('INFO', `Log levels updated - Backend: ${config.backend_log_level}, Frontend: ${config.frontend_log_level}`);
