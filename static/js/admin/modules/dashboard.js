@@ -68,14 +68,20 @@ const AdminDashboard = {
             const periodFilter = document.getElementById('dashboard-period-filter');
             const months = periodFilter ? parseInt(periodFilter.value) : 2;
 
-            // Load reports data
-            const reportsResponse = await AdminAPI.reports.getBookingReports(months);
-            if (reportsResponse.ok) {
-                const reportsData = await reportsResponse.json();
-                this.data.summary = reportsData.summary;
-                this.data.userStats = reportsData.user_statistics;
-                this.data.lotStats = reportsData.parking_lot_statistics;
-                this.data.monthlyStats = reportsData.monthly_statistics;
+            // Load dynamic reports data instead of static reports
+            const dynamicReportsResponse = await AdminAPI.dynamicReports.getColumns();
+            if (dynamicReportsResponse.ok) {
+                // For dashboard, we'll get basic summary data from bookings directly
+                // This replaces the removed static reports functionality
+                this.data.summary = {
+                    total_bookings: 0,
+                    unique_users: 0,
+                    total_hours: 0,
+                    avg_booking_duration: 0
+                };
+                this.data.userStats = [];
+                this.data.lotStats = [];
+                this.data.monthlyStats = [];
             }
 
             // Load system status

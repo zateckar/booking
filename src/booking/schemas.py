@@ -209,6 +209,35 @@ class Booking(BookingRead):
         return self
 
 
+class BookingAdmin(BaseModel):
+    """Enhanced booking schema for admin interface with all related data"""
+    id: int
+    space_id: int | None
+    user_id: int | None
+    start_time: datetime
+    end_time: datetime
+    license_plate: str
+    is_cancelled: bool
+    deleted_space_info: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    user: User | None = None
+    space: ParkingSpace | None = None
+    
+    @field_validator('start_time', 'end_time', 'created_at', 'updated_at')
+    @classmethod
+    def validate_timezone_aware(cls, v: datetime) -> datetime:
+        """Ensure datetime is timezone-aware, default to UTC if naive"""
+        if v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
+    
+    model_config = {
+        "from_attributes": True,
+        "validate_default": False,
+    }
+
+
 class AvailabilityResponse(BaseModel):
     booked_space_ids: list[int]
     space_license_plates: dict[int, str] = {}

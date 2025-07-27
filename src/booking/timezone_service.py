@@ -38,6 +38,33 @@ class TimezoneService:
         """Refresh the cached timezone setting"""
         self._cached_timezone = None
     
+    def set_system_timezone(self, timezone_name: str):
+        """
+        Set the system timezone in email settings
+        
+        Args:
+            timezone_name: Timezone string to set
+        """
+        try:
+            # Validate timezone first
+            pytz.timezone(timezone_name)
+        except pytz.exceptions.UnknownTimeZoneError:
+            raise ValueError(f"Invalid timezone: {timezone_name}")
+        
+        # Get or create EmailSettings record
+        settings = self.db.query(models.EmailSettings).first()
+        if not settings:
+            settings = models.EmailSettings(timezone=timezone_name)
+            self.db.add(settings)
+        else:
+            settings.timezone = timezone_name
+        
+        # Commit the change
+        self.db.commit()
+        
+        # Clear cache to force refresh
+        self.refresh_timezone_cache()
+    
     def convert_utc_to_local(self, utc_dt: datetime, timezone_name: Optional[str] = None) -> datetime:
         """
         Convert UTC datetime to local timezone

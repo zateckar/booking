@@ -74,65 +74,12 @@ class ReportScheduler:
         """Check if reports should be sent and send them"""
         db = SessionLocal()
         try:
-            await self._check_and_send_static_reports(db)
             await self._check_and_send_dynamic_reports(db)
         except Exception as e:
             logger.error(f"Error checking and sending reports: {str(e)}")
         finally:
             db.close()
     
-    async def _check_and_send_static_reports(self, db: Session):
-        """Check if static reports should be sent and send them"""
-        try:
-            settings = db.query(models.EmailSettings).first()
-            if not settings:
-                logger.debug("No email settings found")
-                return
-                
-            if not settings.reports_enabled:
-                logger.debug("Static reports are disabled")
-                return
-            
-            # Import timezone service here to avoid circular imports
-            from .timezone_service import TimezoneService
-            
-            now = datetime.now(timezone.utc)
-            timezone_service = TimezoneService(db)
-            
-            # Get the configured timezone (defaults to UTC if not set)
-            user_timezone = settings.timezone or 'UTC'
-            
-            # Convert current UTC time to user's timezone
-            local_now = timezone_service.convert_utc_to_local(now, user_timezone)
-            current_local_hour = local_now.hour
-            
-            logger.debug(f"Static report time check: local={local_now.strftime('%H:%M')} {user_timezone}, scheduled={settings.report_schedule_hour}:00")
-            
-            # Check if it's time to send report based on schedule in user's timezone
-            if current_local_hour != settings.report_schedule_hour:
-                logger.debug(f"Not time to send static report (current hour: {current_local_hour}, scheduled: {settings.report_schedule_hour})")
-                return
-            
-            # Check if we should send based on frequency and last sent time
-            should_send = self._should_send_report(settings, now, local_now)
-            logger.debug(f"Should send static report: {should_send}")
-            if not should_send:
-                logger.debug("Static report sending skipped based on frequency/timing rules")
-                return
-            
-            logger.info(f"Sending scheduled static report at {local_now.strftime('%H:%M')} {user_timezone}")
-            
-            # Send the report
-            email_service = EmailService(db)
-            success = email_service.send_booking_report()
-            
-            if success:
-                logger.info(f"Scheduled static report sent successfully at {local_now.strftime('%H:%M')} {user_timezone}")
-            else:
-                logger.error("Failed to send scheduled static report")
-                
-        except Exception as e:
-            logger.error(f"Error checking and sending static reports: {str(e)}")
     
     async def _check_and_send_dynamic_reports(self, db: Session):
         """Check if dynamic reports should be sent and send them"""
@@ -192,53 +139,6 @@ class ReportScheduler:
         except Exception as e:
             logger.error(f"Error checking and sending dynamic reports: {str(e)}")
     
-    def _should_send_report(self, settings, now_utc: datetime, now_local: datetime) -> bool:
-        """
-        Determine if a report should be sent based on frequency and last sent time
-        
-        Args:
-            settings: EmailSettings object
-            now_utc: Current UTC datetime
-            now_local: Current local datetime
-            
-        Returns:
-            True if report should be sent, False otherwise
-        """
-        if not settings.last_report_sent:
-            # Never sent before, send now
-            return True
-        
-        # Import timezone service here to avoid circular imports
-        from .timezone_service import TimezoneService
-        from datetime import timedelta
-        
-        # Convert last sent time to local timezone for comparison
-        timezone_service = TimezoneService(SessionLocal())
-        user_timezone = settings.timezone or 'UTC'
-        last_sent_local = timezone_service.convert_utc_to_local(settings.last_report_sent, user_timezone)
-        
-        # Check based on frequency
-        if settings.report_frequency == "daily":
-            # Send if it's a different day or if it's been more than 20 hours
-            # (to handle edge cases around DST changes)
-            different_day = now_local.date() != last_sent_local.date()
-            time_threshold = (now_utc - settings.last_report_sent).total_seconds() >= 72000  # 20 hours
-            return different_day and time_threshold
-            
-        elif settings.report_frequency == "weekly":
-            # Send if it's been at least 6 days and it's the same day of week or later
-            days_since = (now_utc - settings.last_report_sent).days
-            return days_since >= 6
-            
-        elif settings.report_frequency == "monthly":
-            # Send if it's been at least 28 days
-            days_since = (now_utc - settings.last_report_sent).days
-            return days_since >= 28
-        
-        # Default to daily behavior
-        different_day = now_local.date() != last_sent_local.date()
-        time_threshold = (now_utc - settings.last_report_sent).total_seconds() >= 72000  # 20 hours
-        return different_day and time_threshold
     
     def _should_send_dynamic_report(self, settings, now_utc: datetime, now_local: datetime) -> bool:
         """

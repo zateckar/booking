@@ -239,6 +239,7 @@ def log_token_information(token: Dict[str, Any], provider_name: str, user_email:
 
 
 async def process_auth_response(request: Request, provider_name: str):
+
     try:
         # The provider_name is already URL-decoded by the route handler
         logger.debug(f"Processing auth response for provider: '{provider_name}'")
@@ -292,6 +293,7 @@ async def process_auth_response(request: Request, provider_name: str):
         claims_service = ClaimsMappingService(db)
         
         try:
+
             # Extract claims from ID token or access token
             token_claims = {}
             if "id_token" in token:
@@ -374,6 +376,7 @@ async def get_oidc_logout_url(provider_name: str, id_token: Optional[str] = None
     Returns:
         The logout URL to redirect the user to, or None if provider doesn't support logout
     """
+
     try:
         logger.info(f"Getting OIDC logout URL for provider: {provider_name}")
         
@@ -433,3 +436,4 @@ async def get_oidc_logout_url(provider_name: str, id_token: Optional[str] = None
     except Exception as e:
         logger.error(f"Error generating OIDC logout URL for {provider_name}: {e}")
         return None
+

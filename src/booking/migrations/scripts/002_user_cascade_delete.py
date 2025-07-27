@@ -6,7 +6,7 @@ by making user_id nullable and setting up proper foreign key constraints.
 """
 
 from sqlalchemy import text
-from booking.migrations.base import BaseMigration
+from ..base import BaseMigration
 
 
 class UserCascadeDeleteMigration(BaseMigration):

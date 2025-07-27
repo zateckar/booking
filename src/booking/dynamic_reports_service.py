@@ -65,13 +65,17 @@ class DynamicReportsService:
         return result
     
     def _discover_dynamic_columns(self) -> List[Dict[str, Any]]:
-        """Discover available dynamic columns from user profiles"""
+        """Discover available dynamic columns from user profiles and claim mappings"""
         dynamic_columns = []
-        
-        # Get all user profiles and extract unique field names
-        profiles = self.db.query(models.UserProfile).all()
         field_names = set()
         
+        # First, get all configured claim mappings - these should always be available as columns
+        claim_mappings = self.db.query(models.OIDCClaimMapping).all()
+        for mapping in claim_mappings:
+            field_names.add(mapping.mapped_field_name)
+        
+        # Also get field names from existing user profiles to catch any legacy data
+        profiles = self.db.query(models.UserProfile).all()
         for profile in profiles:
             if profile.profile_data:
                 try:
@@ -80,7 +84,7 @@ class DynamicReportsService:
                 except json.JSONDecodeError:
                     continue
         
-        # Create column definitions for discovered fields
+        # Create column definitions for all discovered fields
         for field_name in field_names:
             # Try to determine data type from claim mappings
             data_type = "string"  # default
@@ -192,7 +196,8 @@ class DynamicReportsService:
                     'total_hours': 0,
                     'avg_duration': 0,
                     'parking_lots_used': set(),
-                    'license_plates': set(),
+                    'license_plates_count': set(),
+                    'license_plates_list': set(),
                     'first_booking': booking.start_time,
                     'last_booking': booking.start_time
                 }
@@ -201,7 +206,11 @@ class DynamicReportsService:
             user_stats[user_id]['total_bookings'] += 1
             user_stats[user_id]['total_hours'] += duration_hours
             user_stats[user_id]['parking_lots_used'].add(booking.space.parking_lot.name)
-            user_stats[user_id]['license_plates'].add(booking.license_plate)
+            
+            # Add license plate to both count and list tracking
+            if booking.license_plate:  # Only add non-empty license plates
+                user_stats[user_id]['license_plates_count'].add(booking.license_plate)
+                user_stats[user_id]['license_plates_list'].add(booking.license_plate)
             
             # Update booking date range
             if booking.start_time < user_stats[user_id]['first_booking']:
@@ -209,12 +218,19 @@ class DynamicReportsService:
             if booking.start_time > user_stats[user_id]['last_booking']:
                 user_stats[user_id]['last_booking'] = booking.start_time
         
-        # Calculate averages and convert sets to counts
+        # Calculate averages and convert sets to appropriate formats
         for user_id, stats in user_stats.items():
             if stats['total_bookings'] > 0:
                 stats['avg_duration'] = stats['total_hours'] / stats['total_bookings']
             stats['parking_lots_used'] = len(stats['parking_lots_used'])
-            stats['license_plates'] = len(stats['license_plates'])
+            
+            # Convert license plates to count and sorted list
+            stats['license_plates_count'] = len(stats['license_plates_count'])
+            stats['license_plates_list'] = sorted(list(stats['license_plates_list']))  # Convert to sorted list for consistency
+            
+            # Keep backward compatibility with the old 'license_plates' field
+            stats['license_plates'] = stats['license_plates_count']
+            
             stats['first_booking'] = stats['first_booking'].isoformat()
             stats['last_booking'] = stats['last_booking'].isoformat()
         
@@ -248,7 +264,8 @@ class DynamicReportsService:
         """Check if a column comes from user profile data"""
         static_columns = {
             'user_id', 'email', 'is_admin', 'total_bookings', 'total_hours', 
-            'avg_duration', 'parking_lots_used', 'license_plates', 'first_booking', 'last_booking'
+            'avg_duration', 'parking_lots_used', 'license_plates', 'license_plates_count', 
+            'license_plates_list', 'first_booking', 'last_booking'
         }
         return column_name not in static_columns
     

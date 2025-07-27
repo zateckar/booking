@@ -3,6 +3,9 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
+from .logging_config import get_logger
+
+logger = get_logger("database")
 
 # Use the mounted volume directory for database persistence
 # Check if DATABASE_URL is set in environment, otherwise use default path
@@ -44,8 +47,8 @@ def create_initial_admin_user():
     admin_password = os.getenv("INITIAL_ADMIN_PASSWORD")
     
     if not admin_email or not admin_password:
-        print("⚠️  No initial admin credentials provided via environment variables")
-        print("   Set INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD to create default admin user")
+        logger.warning("No initial admin credentials provided via environment variables")
+        logger.info("Set INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD to create default admin user")
         return
     
     db = SessionLocal()
@@ -53,7 +56,7 @@ def create_initial_admin_user():
         # Check if admin user already exists
         existing_admin = db.query(User).filter(User.email == admin_email).first()
         if existing_admin:
-            print(f"✅ Admin user already exists: {admin_email}")
+            logger.info(f"Admin user already exists: {admin_email}")
             return
         
         # Create new admin user
@@ -68,11 +71,11 @@ def create_initial_admin_user():
         db.commit()
         db.refresh(admin_user)
         
-        print(f"✅ Initial admin user created successfully: {admin_email}")
-        print("   You can now log in with the provided credentials")
+        logger.info(f"Initial admin user created successfully: {admin_email}")
+        logger.info("You can now log in with the provided credentials")
         
     except Exception as e:
-        print(f"❌ Failed to create initial admin user: {e}")
+        logger.error(f"Failed to create initial admin user: {e}")
         db.rollback()
     finally:
         db.close()
@@ -88,41 +91,48 @@ def create_db_and_tables():
     from .migrations.schema_version import SchemaVersionManager
     
     try:
-        print("🔍 Checking database schema compatibility...")
+        logger.info("Checking database schema compatibility...")
         
         # Check schema requirements
         runner = MigrationRunner()
         is_compatible, message, details = runner.check_schema_compatibility()
         
         if not is_compatible:
-            print(f"⚠️  Schema compatibility check: {message}")
-            print(f"   Current version: {details.get('current_version', 'unknown')}")
-            print(f"   Required version: {details.get('required_version')}")
+            logger.warning(f"Schema compatibility check: {message}")
+            logger.info(f"Current version: {details.get('current_version', 'unknown')}")
+            logger.info(f"Required version: {details.get('required_version')}")
             
             if details.get('issue') == 'database_not_initialized':
-                print("🔧 Database not initialized. Running migrations...")
+                logger.info("Database not initialized. Running migrations...")
             elif details.get('issue') == 'failed_migrations':
-                print("❌ Database has failed migrations. Manual intervention required.")
+                logger.error("Database has failed migrations. Manual intervention required.")
                 return
             else:
-                print("🔧 Running migrations to update schema...")
+                logger.info("Running migrations to update schema...")
         
         # Run pending migrations
-        print("🔍 Checking for pending migrations...")
+        logger.info("Checking for pending migrations...")
         if not run_migrations():
-            print("⚠️  Some migrations failed. Please check the logs.")
+            logger.warning("Some migrations failed. Please check the logs.")
             return
         
         # Verify schema compatibility after migrations
         is_compatible, message, details = runner.check_schema_compatibility()
         if is_compatible:
-            print(f"✅ Database schema is compatible: {message}")
+            logger.info(f"Database schema is compatible: {message}")
         else:
-            print(f"❌ Database schema compatibility issue: {message}")
-            print("⚠️  Application may not function correctly!")
+            logger.error(f"Database schema compatibility issue: {message}")
+            logger.warning("Application may not function correctly!")
             
     except Exception as e:
-        print(f"⚠️  Migration check failed: {e}")
+        logger.warning(f"Migration check failed: {e}")
     
     # Create initial admin user after migrations
     create_initial_admin_user()
+    
+    # Apply stored log configuration
+    try:
+        from .logging_config import apply_stored_log_configuration
+        apply_stored_log_configuration()
+    except Exception as e:
+        logger.warning(f"Could not apply stored log configuration: {e}")

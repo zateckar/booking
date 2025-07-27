@@ -470,10 +470,10 @@ async function fetchParkingSpaces(lotId, canvasInstance, isAdmin, bookedSpaceIds
             strokeWidth: 0,
         });
 
-        // Create space number text
+        // Create space number text (always centered)
         const spaceText = new fabric.Text(space.space_number, {
             left: space.width / 2,
-            top: licensePlate ? space.height / 2 - 10 : space.height / 2,
+            top: space.height / 2,
             fontSize: 18,
             fill: 'black',
             originX: 'center',
@@ -483,19 +483,8 @@ async function fetchParkingSpaces(lotId, canvasInstance, isAdmin, bookedSpaceIds
 
         const groupObjects = [rect, spaceText];
 
-        // Add license plate text if space is booked
-        if (licensePlate) {
-            const licensePlateText = new fabric.Text(licensePlate, {
-                left: space.width / 2,
-                top: space.height / 2 + 12,
-                fontSize: 16,
-                fill: 'black',
-                originX: 'center',
-                originY: 'center',
-                fontWeight: 'normal'
-            });
-            groupObjects.push(licensePlateText);
-        }
+        // Note: License plate text is no longer displayed on the space
+        // Click on booked spaces to view booking details
 
         const group = new fabric.Group(groupObjects, {
             left: space.position_x,
@@ -516,23 +505,29 @@ async function fetchParkingSpaces(lotId, canvasInstance, isAdmin, bookedSpaceIds
 
 // Handle canvas click for booking
 async function handleCanvasClick(e) {
-    if (e.target && e.target.data.id && !e.target.data.is_booked) {
-        // Check if trying to book for a past date
-        if (availabilityStartTimeInput && availabilityStartTimeInput.value) {
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const bookingDate = new Date(availabilityStartTimeInput.value);
-            const bookingDateOnly = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
-            
-            if (bookingDateOnly < today) {
-                showErrorNotification('Cannot create bookings for past dates. Please select today or a future date to make a booking.');
-                return; // Don't open the modal
+    if (e.target && e.target.data.id) {
+        if (e.target.data.is_booked) {
+            // Show booking details for booked space
+            await showBookingDetails(e.target.data.id, e.target.data.space_number);
+        } else {
+            // Handle booking for available space
+            // Check if trying to book for a past date
+            if (availabilityStartTimeInput && availabilityStartTimeInput.value) {
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const bookingDate = new Date(availabilityStartTimeInput.value);
+                const bookingDateOnly = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
+                
+                if (bookingDateOnly < today) {
+                    showErrorNotification('Cannot create bookings for past dates. Please select today or a future date to make a booking.');
+                    return; // Don't open the modal
+                }
             }
+            
+            selectedSpaceIdInput.value = e.target.data.id;
+            bookingModalLabel.textContent = `Book Space: ${e.target.data.space_number}`;
+            bookingModal.show();
         }
-        
-        selectedSpaceIdInput.value = e.target.data.id;
-        bookingModalLabel.textContent = `Book Space: ${e.target.data.space_number}`;
-        bookingModal.show();
     }
 }
 
@@ -587,6 +582,94 @@ async function handleCreateBooking(event) {
         bookingModal.hide();
         // Show floating error notification that's always visible
         showErrorNotification(`Booking failed: ${error.detail}`);
+    }
+}
+
+// Show booking details for a booked space
+async function showBookingDetails(spaceId, spaceNumber) {
+    const modal = new bootstrap.Modal(document.getElementById('booking-details-modal'));
+    const loadingDiv = document.getElementById('booking-detail-loading');
+    const errorDiv = document.getElementById('booking-detail-error');
+    
+    // Reset modal content
+    document.getElementById('booking-detail-space').textContent = spaceNumber;
+    document.getElementById('booking-detail-user').textContent = '-';
+    document.getElementById('booking-detail-license-plate').textContent = '-';
+    document.getElementById('booking-detail-start-time').textContent = '-';
+    document.getElementById('booking-detail-end-time').textContent = '-';
+    
+    // Show loading and hide error
+    loadingDiv.style.display = 'block';
+    errorDiv.style.display = 'none';
+    
+    // Show modal
+    modal.show();
+    
+    try {
+        // Get current time range for booking search
+        const start = availabilityStartTimeInput?.value;
+        const end = availabilityEndTimeInput?.value;
+        
+        if (!start || !end) {
+            throw new Error('No time range specified');
+        }
+        
+        const startDateTime = new Date(start).toISOString();
+        const endDateTime = new Date(end).toISOString();
+        
+        // Fetch booking details for this space in the current time range
+        const response = await window.auth.makeAuthenticatedRequest(
+            `/api/bookings/?space_id=${spaceId}&start_time=${encodeURIComponent(startDateTime)}&end_time=${encodeURIComponent(endDateTime)}`
+        );
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch booking details');
+        }
+        
+        const bookings = await response.json();
+        
+        // Find the current booking for this space
+        const currentTime = new Date();
+        const currentBooking = bookings.find(booking => 
+            booking.space.id === spaceId && 
+            !booking.is_cancelled &&
+            new Date(booking.start_time) <= currentTime &&
+            new Date(booking.end_time) >= currentTime
+        );
+        
+        if (currentBooking) {
+            // Populate modal with booking details
+            document.getElementById('booking-detail-user').textContent = currentBooking.user.email;
+            document.getElementById('booking-detail-license-plate').textContent = currentBooking.license_plate;
+            document.getElementById('booking-detail-start-time').textContent = new Date(currentBooking.start_time).toLocaleString([], {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('booking-detail-end-time').textContent = new Date(currentBooking.end_time).toLocaleString([], {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } else {
+            // No current booking found (might be a future booking)
+            document.getElementById('booking-detail-user').textContent = 'Booking not found';
+            document.getElementById('booking-detail-license-plate').textContent = '-';
+        }
+        
+        // Hide loading
+        loadingDiv.style.display = 'none';
+        
+    } catch (error) {
+        console.error('Error fetching booking details:', error);
+        
+        // Hide loading and show error
+        loadingDiv.style.display = 'none';
+        errorDiv.style.display = 'block';
     }
 }
 
@@ -1007,8 +1090,8 @@ function setupMobileTouchInteractions() {
             const pointer = userCanvas.getPointer({ clientX: touchStartPoint.x, clientY: touchStartPoint.y });
             const target = userCanvas.findTarget({ clientX: touchStartPoint.x, clientY: touchStartPoint.y });
             
-            if (target && target.data && target.data.id && !target.data.is_booked) {
-                // Trigger booking modal for available space
+            if (target && target.data && target.data.id) {
+                // Trigger either booking modal or booking details based on space status
                 setTimeout(() => {
                     handleCanvasClick({ target: target });
                 }, 50); // Small delay to ensure touch event is complete

@@ -9,7 +9,6 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
-from .database import SessionLocal
 from . import models
 
 
@@ -37,6 +36,7 @@ class TimezoneAwareFormatter(logging.Formatter):
             # Try to get timezone service with a temporary database session
             db = None
             try:
+                from .database import SessionLocal
                 db = SessionLocal()
                 timezone_service = TimezoneService(db)
                 # Format with timezone info for console logs
@@ -88,6 +88,7 @@ class DatabaseLogHandler(logging.Handler):
             
         db = None
         try:
+            from .database import SessionLocal
             db = SessionLocal()
             try:
                 # Extract extra data if present
@@ -171,6 +172,44 @@ def setup_logging():
         logger.setLevel(level)
     
     return db_handler
+
+
+def apply_stored_log_configuration():
+    """Apply log configuration stored in the database"""
+    try:
+        from .database import SessionLocal
+        from . import models
+        
+        db = SessionLocal()
+        try:
+            # Get backend log level from database
+            backend_config = db.query(models.AppConfig).filter(
+                models.AppConfig.config_key == "backend_log_level"
+            ).first()
+            
+            if backend_config:
+                log_level_name = backend_config.config_value.upper()
+                if hasattr(logging, log_level_name):
+                    log_level = getattr(logging, log_level_name)
+                    
+                    # Apply to root logger
+                    root_logger = logging.getLogger()
+                    root_logger.setLevel(log_level)
+                    
+                    # Apply to specific loggers
+                    for logger_name in ["booking", "booking.database", "booking.services", "booking.routers"]:
+                        specific_logger = logging.getLogger(logger_name)
+                        specific_logger.setLevel(log_level)
+                    
+                    # Log the configuration application
+                    logger = logging.getLogger("booking.logging_config")
+                    logger.info(f"Applied stored backend log level: {log_level_name}")
+        finally:
+            db.close()
+    except Exception as e:
+        # Don't let logging configuration errors prevent app startup
+        # Use basic print since logging might not be fully configured yet
+        print(f"Warning: Could not apply stored log configuration: {e}")
 
 
 def get_logger(name: str) -> logging.Logger:

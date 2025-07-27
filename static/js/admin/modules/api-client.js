@@ -281,6 +281,18 @@ const AdminAPI = {
             return await AdminAPI.makeRequest(`/api/admin/logs/cleanup?days=${days}`, {
                 method: 'DELETE'
             });
+        },
+
+        async getLogConfig() {
+            return await AdminAPI.makeRequest('/api/admin/logs/config');
+        },
+
+        async updateLogConfig(configData) {
+            return await AdminAPI.makeRequest('/api/admin/logs/config', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(configData)
+            });
         }
     },
 
@@ -319,36 +331,6 @@ const AdminAPI = {
         }
     },
 
-    // Reports API
-    reports: {
-        async getBookingReports(months = 2) {
-            return await AdminAPI.makeRequest(`/api/admin/reports/bookings?months=${months}`);
-        },
-
-        async downloadExcel(months = 2) {
-            return await AdminAPI.makeRequest(`/api/admin/reports/download/excel?months=${months}`);
-        },
-
-        async sendEmail(data) {
-            return await AdminAPI.makeRequest('/api/admin/reports/send-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-        },
-
-        async getScheduleSettings() {
-            return await AdminAPI.makeRequest('/api/admin/reports/schedule-settings');
-        },
-
-        async updateScheduleSettings(settings) {
-            return await AdminAPI.makeRequest('/api/admin/reports/schedule-settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings)
-            });
-        }
-    },
 
     // Dynamic reports API
     dynamicReports: {
@@ -486,6 +468,56 @@ const AdminAPI = {
 
         async listBackups(limit = 10) {
             return await AdminAPI.makeRequest(`/api/admin/backup-settings/list-backups?limit=${limit}`);
+        }
+    },
+
+    // Bookings API
+    bookings: {
+        async getAll(params = {}) {
+            const queryParams = new URLSearchParams();
+            Object.keys(params).forEach(key => {
+                if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+                    queryParams.append(key, params[key]);
+                }
+            });
+            const queryString = queryParams.toString();
+            return await AdminAPI.makeRequest(`/api/admin/bookings/bookings${queryString ? '?' + queryString : ''}`);
+        },
+
+        async getCount(params = {}) {
+            const queryParams = new URLSearchParams();
+            Object.keys(params).forEach(key => {
+                if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+                    queryParams.append(key, params[key]);
+                }
+            });
+            const queryString = queryParams.toString();
+            return await AdminAPI.makeRequest(`/api/admin/bookings/bookings/count${queryString ? '?' + queryString : ''}`);
+        },
+
+        async delete(bookingId) {
+            return await AdminAPI.makeRequest(`/api/admin/bookings/bookings/${bookingId}`, {
+                method: 'DELETE'
+            });
+        },
+
+        async exportExcel(params = {}) {
+            const queryParams = new URLSearchParams();
+            Object.keys(params).forEach(key => {
+                if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+                    queryParams.append(key, params[key]);
+                }
+            });
+            const queryString = queryParams.toString();
+            return await AdminAPI.makeRequest(`/api/admin/bookings/bookings/export${queryString ? '?' + queryString : ''}`);
+        },
+
+        async getUsersWithBookings() {
+            return await AdminAPI.makeRequest('/api/admin/bookings/bookings/users');
+        },
+
+        async getParkingLotsWithBookings() {
+            return await AdminAPI.makeRequest('/api/admin/bookings/bookings/parking-lots');
         }
     }
 };

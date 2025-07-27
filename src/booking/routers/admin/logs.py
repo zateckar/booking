@@ -1,16 +1,29 @@
 """
-Admin routes for viewing application logs
+Admin routes for viewing application logs and managing log configuration
 """
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_, or_, func
+from pydantic import BaseModel
 
 from ... import models, schemas
 from ...database import get_db
 from ...security import get_current_admin_user
 from ...timezone_service import TimezoneService
+from ...logging_config import get_logger
+
+logger = get_logger("routers.admin.logs")
+
+class LogConfigUpdate(BaseModel):
+    backend_log_level: Optional[str] = None
+    frontend_log_level: Optional[str] = None
+
+class LogConfigResponse(BaseModel):
+    backend_log_level: str
+    frontend_log_level: str
 
 router = APIRouter()
 
@@ -185,3 +198,103 @@ def cleanup_old_logs(
         "deleted_count": deleted_count,
         "cutoff_date": cutoff_time.isoformat()
     }
+
+
+@router.get("/logs/config", response_model=LogConfigResponse)
+def get_log_config(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user),
+):
+    """Get current logging configuration"""
+    
+    # Get backend log level from AppConfig
+    backend_level_config = db.query(models.AppConfig).filter(
+        models.AppConfig.config_key == "backend_log_level"
+    ).first()
+    
+    frontend_level_config = db.query(models.AppConfig).filter(
+        models.AppConfig.config_key == "frontend_log_level"
+    ).first()
+    
+    # Default to INFO level if not configured
+    backend_level = backend_level_config.config_value if backend_level_config else "INFO"
+    frontend_level = frontend_level_config.config_value if frontend_level_config else "INFO"
+    
+    return LogConfigResponse(
+        backend_log_level=backend_level,
+        frontend_log_level=frontend_level
+    )
+
+
+@router.put("/logs/config", response_model=LogConfigResponse)
+def update_log_config(
+    config_update: LogConfigUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user),
+):
+    """Update logging configuration"""
+    
+    valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    
+    if config_update.backend_log_level:
+        if config_update.backend_log_level.upper() not in valid_levels:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid backend log level. Must be one of: {', '.join(valid_levels)}"
+            )
+        
+        # Update or create backend log level config
+        backend_config = db.query(models.AppConfig).filter(
+            models.AppConfig.config_key == "backend_log_level"
+        ).first()
+        
+        if backend_config:
+            backend_config.config_value = config_update.backend_log_level.upper()
+        else:
+            backend_config = models.AppConfig(
+                config_key="backend_log_level",
+                config_value=config_update.backend_log_level.upper(),
+                description="Backend Python logger level"
+            )
+            db.add(backend_config)
+        
+        # Apply the log level change immediately
+        root_logger = logging.getLogger()
+        new_level = getattr(logging, config_update.backend_log_level.upper())
+        root_logger.setLevel(new_level)
+        
+        # Also update specific loggers
+        for logger_name in ["booking", "booking.database", "booking.services", "booking.routers"]:
+            specific_logger = logging.getLogger(logger_name)
+            specific_logger.setLevel(new_level)
+        
+        logger.info(f"Backend log level updated to {config_update.backend_log_level.upper()}")
+    
+    if config_update.frontend_log_level:
+        if config_update.frontend_log_level.upper() not in valid_levels:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid frontend log level. Must be one of: {', '.join(valid_levels)}"
+            )
+        
+        # Update or create frontend log level config
+        frontend_config = db.query(models.AppConfig).filter(
+            models.AppConfig.config_key == "frontend_log_level"
+        ).first()
+        
+        if frontend_config:
+            frontend_config.config_value = config_update.frontend_log_level.upper()
+        else:
+            frontend_config = models.AppConfig(
+                config_key="frontend_log_level",
+                config_value=config_update.frontend_log_level.upper(),
+                description="Frontend console logging level"
+            )
+            db.add(frontend_config)
+        
+        logger.info(f"Frontend log level updated to {config_update.frontend_log_level.upper()}")
+    
+    db.commit()
+    
+    # Return updated configuration
+    return get_log_config(db, current_user)

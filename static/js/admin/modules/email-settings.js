@@ -12,8 +12,9 @@ const AdminEmail = {
                 document.getElementById('from-email').value = settings.from_email || '';
                 document.getElementById('from-name').value = settings.from_name || '';
                 document.getElementById('booking-confirmation-enabled').checked = settings.booking_confirmation_enabled || false;
-                document.getElementById('reports-enabled').checked = settings.reports_enabled || false;
-                document.getElementById('report-recipients').value = (settings.report_recipients || []).join(', ');
+                // Static reports functionality has been removed - only dynamic reports remain
+                // document.getElementById('reports-enabled').checked = settings.reports_enabled || false;
+                // document.getElementById('report-recipients').value = (settings.report_recipients || []).join(', ');
             } else {
                 AdminNotifications.showError('Failed to load email settings');
             }

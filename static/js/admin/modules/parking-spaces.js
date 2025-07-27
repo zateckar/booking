@@ -92,7 +92,7 @@ const AdminParkingSpaces = {
         }
     },
 
-    // Synchronized background image loading
+    // Synchronized background image loading with proper container readiness check
     async loadBackgroundImageSynchronized(imageUrl) {
         return new Promise((resolve, reject) => {
             fabric.Image.fromURL(imageUrl, (img) => {
@@ -107,15 +107,62 @@ const AdminParkingSpaces = {
                         this.adminCanvas.originalHeight = this.adminCanvas.backgroundImage.height;
                     }
                     
-                    // Ensure canvas is properly sized before resolving
-                    this.resizeAdminCanvas(this.adminCanvas, document.getElementById('admin-canvas-container'));
-                    
-                    // Add small delay to ensure rendering is complete
-                    setTimeout(() => {
+                    // Wait for container to be properly rendered before resizing
+                    this.waitForContainerAndResize().then(() => {
                         resolve();
-                    }, 50);
+                    });
                 });
             }, { crossOrigin: 'anonymous' });
+        });
+    },
+
+    // Wait for container to be ready and then resize canvas
+    async waitForContainerAndResize() {
+        return new Promise((resolve) => {
+            const container = document.getElementById('admin-canvas-container');
+            if (!container) {
+                resolve();
+                return;
+            }
+
+            // Function to check if container is ready
+            const checkContainerReady = () => {
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+                
+                // Container is ready if it has proper dimensions and is visible
+                if (containerWidth > 0 && containerHeight > 0) {
+                    // Force a resize with proper timing
+                    this.resizeAdminCanvas(this.adminCanvas, container);
+                    
+                    // Add extra delay to ensure everything is properly rendered
+                    setTimeout(() => {
+                        // Second resize to ensure it's properly applied
+                        this.resizeAdminCanvas(this.adminCanvas, container);
+                        resolve();
+                    }, 100);
+                    return true;
+                }
+                return false;
+            };
+
+            // First check immediately
+            if (checkContainerReady()) {
+                return;
+            }
+
+            // If not ready, wait and check again
+            let attempts = 0;
+            const maxAttempts = 20; // Max 2 seconds
+            
+            const intervalId = setInterval(() => {
+                attempts++;
+                
+                if (checkContainerReady() || attempts >= maxAttempts) {
+                    clearInterval(intervalId);
+                    resolve();
+                }
+            }, 100);
         });
     },
 
@@ -233,10 +280,10 @@ const AdminParkingSpaces = {
             objectCaching: false
         });
 
-        // Create space number text
+        // Create space number text (always centered)
         const spaceText = new fabric.Text(spaceData.space_number, {
             left: spaceData.position_x + spaceData.width / 2,
-            top: spaceData.position_y + spaceData.height / 2 - (licensePlate ? 10 : 0),
+            top: spaceData.position_y + spaceData.height / 2,
             fontSize: 18,
             fill: 'black',
             fontWeight: 'bold',
@@ -247,20 +294,8 @@ const AdminParkingSpaces = {
 
         const groupObjects = [rect, spaceText];
 
-        // Add license plate text if space is booked
-        if (licensePlate) {
-            const licensePlateText = new fabric.Text(licensePlate, {
-                left: spaceData.position_x + spaceData.width / 2,
-                top: spaceData.position_y + spaceData.height / 2 + 12,
-                fontSize: 16,
-                fill: 'black',
-                fontWeight: 'normal',
-                originX: 'center',
-                originY: 'center',
-                selectable: false
-            });
-            groupObjects.push(licensePlateText);
-        }
+        // Note: License plate text is no longer displayed on the space
+        // Click on booked spaces to view booking details
 
         const group = new fabric.Group(groupObjects, {
             left: spaceData.position_x,
@@ -269,6 +304,8 @@ const AdminParkingSpaces = {
             hasControls: true,
             hasBorders: false,
             spaceData: spaceData,
+            isBooked: isBooked,
+            licensePlate: licensePlate,
             objectCaching: false
         });
 
@@ -651,28 +688,37 @@ const AdminParkingSpaces = {
         };
     },
 
-    // Responsive canvas functions with device-aware scaling limits
+    // Responsive canvas functions with improved scaling and container fitting
     resizeAdminCanvas(canvas, container) {
         if (!canvas || !container) return;
         
         const containerWidth = container.clientWidth;
-        if (containerWidth > 0 && canvas.originalWidth) {
-            // Calculate initial scale factor based on container width
-            let scaleFactor = Math.min(1, (containerWidth - 20) / canvas.originalWidth);
+        const containerHeight = Math.max(400, window.innerHeight * 0.6); // Use 60% of viewport height, minimum 400px
+        
+        if (containerWidth > 0 && canvas.originalWidth && canvas.originalHeight) {
+            // Calculate scale factors for both width and height
+            const widthScaleFactor = (containerWidth - 40) / canvas.originalWidth;  // 40px padding
+            const heightScaleFactor = (containerHeight - 40) / canvas.originalHeight; // 40px padding
             
-            // Apply device-aware scaling limits
+            // Use the smaller scale factor to ensure the image fits completely
+            let scaleFactor = Math.min(widthScaleFactor, heightScaleFactor);
+            
+            // Apply device-aware scaling limits with more reasonable ranges
             const isMobile = window.innerWidth <= 768;
             
             if (isMobile) {
-                // Mobile limits: min 30%, max 100% of original size
-                scaleFactor = Math.max(0.3, Math.min(1.0, scaleFactor));
+                // Mobile limits: min 20%, max 200% of fitted size
+                scaleFactor = Math.max(0.2, Math.min(2.0, scaleFactor));
             } else {
-                // Desktop limits: min 20%, max 150% of original size
-                scaleFactor = Math.max(0.2, Math.min(1.5, scaleFactor));
+                // Desktop limits: min 15%, max 300% of fitted size
+                scaleFactor = Math.max(0.15, Math.min(3.0, scaleFactor));
             }
             
             const canvasWidth = canvas.originalWidth * scaleFactor;
             const canvasHeight = canvas.originalHeight * scaleFactor;
+
+            // Update container height to accommodate the canvas
+            container.style.minHeight = `${Math.max(400, canvasHeight + 40)}px`;
 
             canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
             if (canvas.backgroundImage) {
@@ -680,6 +726,14 @@ const AdminParkingSpaces = {
                 canvas.backgroundImage.scaleToHeight(canvasHeight);
             }
             canvas.setZoom(scaleFactor);
+            canvas.requestRenderAll();
+        } else if (containerWidth > 0) {
+            // Fallback for canvas without background image
+            const fallbackWidth = Math.min(800, containerWidth - 40);
+            const fallbackHeight = Math.min(600, containerHeight - 40);
+            
+            canvas.setDimensions({ width: fallbackWidth, height: fallbackHeight });
+            canvas.setZoom(1);
             canvas.requestRenderAll();
         }
     },

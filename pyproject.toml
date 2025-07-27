@@ -21,6 +21,19 @@ dependencies = [
     "fastapi>=0.116.1",
     "jinja2>=3.1.6",
     "openpyxl>=3.1.0",
+    "pandas>=2.3.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.12.0",
+    "httpx>=0.28.1",
+    "faker>=22.0.0",
+    "freezegun>=1.4.0",
+    "pytest-xdist>=3.5.0",
 ]
 
 [build-system]
@@ -29,3 +42,15 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[dependency-groups]
+test = [
+    "faker>=37.4.2",
+    "freezegun>=1.5.3",
+    "httpx>=0.28.1",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "pytest-mock>=3.14.1",
+    "pytest-xdist>=3.8.0",
+]

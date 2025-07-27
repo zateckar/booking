@@ -103,6 +103,7 @@ function setupAdminEventListeners() {
     const tabsConfig = [
         { id: 'dashboard-tab', module: 'dashboard', objectName: 'AdminDashboard', load: () => window.AdminDashboard.init() },
         { id: 'users-tab', module: 'users', objectName: 'AdminUsers', load: () => window.AdminUsers.loadUsers() },
+        { id: 'bookings-tab', module: 'bookings', objectName: 'AdminBookings', load: () => window.AdminBookings.ensureInitialized() },
         { id: 'oidc-claims-tab', module: 'oidc-claims', objectName: 'AdminOIDCClaims', load: async () => {
             // Web components will auto-load their data, but ensure module is loaded
             console.log('OIDC & Claims tab activated - ensuring module and web components are ready');
@@ -146,10 +147,6 @@ function setupAdminEventListeners() {
         { id: 'logs-tab', module: 'logs', objectName: 'AdminLogs', load: () => {
             window.AdminLogs.loadLogs();
             window.AdminLogs.loadLoggerNames();
-        }},
-        { id: 'reports-tab', module: 'reports', objectName: 'AdminReports', load: () => {
-            window.AdminReports.loadReportsData();
-            window.AdminReports.loadReportScheduleSettings();
         }},
         { id: 'dynamic-reports-tab', module: 'dynamic-reports', objectName: 'AdminDynamicReports', load: () => {
             window.AdminDynamicReports.loadDynamicReportsData();
@@ -352,13 +349,13 @@ function setupAdminEventListeners() {
         const tabMapping = {
             'dashboard': 'dashboard-pane',
             'users': 'users-pane',
+            'bookings': 'bookings-pane',
             'oidc-claims': 'oidc-claims-pane',
             'parking-lots': 'parking-lots-pane',
             'parking-spaces': 'parking-spaces-pane',
             'email-settings': 'email-pane',
             'timezone-settings': 'timezone-pane',
             'logs': 'logs-pane',
-            'reports': 'reports-pane',
             'dynamic-reports': 'dynamic-reports-pane',
             'styling': 'branding-pane',
             'backup-system': 'system-pane'

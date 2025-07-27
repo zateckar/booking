@@ -5,7 +5,7 @@ This migration creates all the base tables for the booking application.
 """
 
 from sqlalchemy import text
-from booking.migrations.base import BaseMigration
+from ..base import BaseMigration
 
 
 class InitialSchemaMigration(BaseMigration):

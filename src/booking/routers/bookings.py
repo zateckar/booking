@@ -274,8 +274,8 @@ def get_active_spaces_with_license_plates(
         booking_service = BookingService(db)
         space_license_map = booking_service.get_active_bookings_with_license_plates(ref_time)
         
-        # Debug print
-        print(f"Active bookings with license plates: {space_license_map}")
+        # Debug log
+        logger.debug(f"Active bookings with license plates: {space_license_map}")
         
         result = {
             "occupied_spaces": [
@@ -287,8 +287,8 @@ def get_active_spaces_with_license_plates(
             ]
         }
         
-        # Debug print
-        print(f"Response: {result}")
+        # Debug log
+        logger.debug(f"Response: {result}")
         
         return result
     except ValueError as e:

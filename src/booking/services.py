@@ -499,20 +499,20 @@ class BookingService:
             reference_time = reference_time.replace(tzinfo=timezone.utc)
             
         # Query for all active bookings that include the reference time
-        print(f"Fetching active bookings at reference time: {reference_time}")
+        logger.debug(f"Fetching active bookings at reference time: {reference_time}")
         active_bookings = self.db.query(models.Booking).filter(
             models.Booking.is_cancelled == False,
             models.Booking.start_time <= reference_time,
             models.Booking.end_time > reference_time
         ).all()
         
-        print(f"Found {len(active_bookings)} active bookings")
+        logger.debug(f"Found {len(active_bookings)} active bookings")
         
         # Create a mapping of space_id to license plate
         space_to_license = {}
         for booking in active_bookings:
-            print(f"Active booking: space_id={booking.space_id}, license_plate={booking.license_plate}")
+            logger.debug(f"Active booking: space_id={booking.space_id}, license_plate={booking.license_plate}")
             space_to_license[booking.space_id] = booking.license_plate
             
-        print(f"Final space_to_license mapping: {space_to_license}")
+        logger.debug(f"Final space_to_license mapping: {space_to_license}")
         return space_to_license

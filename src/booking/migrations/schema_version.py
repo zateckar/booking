@@ -28,10 +28,10 @@ class SchemaVersionManager:
     
     # Define the schema requirements for this application version
     CURRENT_SCHEMA_REQUIREMENT = SchemaRequirement(
-        required_version="002",
+        required_version="007",
         minimum_version="001", 
-        maximum_version="002",
-        description="Booking application v1.0 - requires user cascade delete support"
+        maximum_version="007",
+        description="Booking application v1.0 - requires full schema with timestamps support"
     )
     
     @classmethod
