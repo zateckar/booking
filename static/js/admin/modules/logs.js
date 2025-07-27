@@ -85,54 +85,45 @@ const AdminLogs = {
         // Store the log level for frontend logging
         localStorage.setItem('frontend_log_level', level);
         
-        // Override console methods based on log level
-        const levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'];
-        const currentLevelIndex = levels.indexOf(level);
-        
-        // Reset console methods to original
-        if (window.originalConsole) {
-            console.log = window.originalConsole.log;
-            console.info = window.originalConsole.info;
-            console.warn = window.originalConsole.warn;
-            console.error = window.originalConsole.error;
-        } else {
-            // Store original console methods
+        // Store reference to original console methods if not already done
+        if (!window.originalConsole) {
             window.originalConsole = {
                 log: console.log.bind(console),
                 info: console.info.bind(console),
                 warn: console.warn.bind(console),
-                error: console.error.bind(console)
+                error: console.error.bind(console),
+                debug: console.debug ? console.debug.bind(console) : console.log.bind(console)
             };
         }
         
-        // Disable logging methods below the current level
-        if (currentLevelIndex > 0) { // Disable DEBUG
-            console.log = () => {};
-        }
-        if (currentLevelIndex > 1) { // Disable INFO
-            console.info = () => {};
-        }
-        if (currentLevelIndex > 2) { // Disable WARNING
-            console.warn = () => {};
-        }
-        if (currentLevelIndex > 3) { // Disable ERROR
-            console.error = () => {};
-        }
+        // Override the global AdminLogs.log method to respect new level
+        this.currentLogLevel = level;
+        
+        // Log level change
+        this.log('INFO', `Frontend log level changed to: ${level}`);
     },
 
     // Frontend logging method that respects log level
     log(level, message, ...args) {
         const levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'];
-        const currentLevel = localStorage.getItem('frontend_log_level') || this.currentConfig.frontend_log_level;
+        const currentLevel = this.currentLogLevel || localStorage.getItem('frontend_log_level') || this.currentConfig.frontend_log_level || 'INFO';
         const currentLevelIndex = levels.indexOf(currentLevel);
         const messageLevelIndex = levels.indexOf(level);
         
+        // Only log if message level is >= current level
         if (messageLevelIndex >= currentLevelIndex) {
             const timestamp = new Date().toISOString();
-            const logMessage = `[${timestamp}] [${level}] ${message}`;
+            const logMessage = `[${timestamp}] [FRONTEND-${level}] ${message}`;
             
+            // Use original console methods to avoid infinite loops
             switch (level) {
                 case 'DEBUG':
+                    if (window.originalConsole && window.originalConsole.debug) {
+                        window.originalConsole.debug(logMessage, ...args);
+                    } else {
+                        window.originalConsole ? window.originalConsole.log(logMessage, ...args) : console.log(logMessage, ...args);
+                    }
+                    break;
                 case 'INFO':
                     window.originalConsole ? window.originalConsole.info(logMessage, ...args) : console.info(logMessage, ...args);
                     break;
@@ -247,16 +238,20 @@ const AdminLogs = {
             });
         }
 
-        // Load initial configuration
-        this.loadLogConfig();
-
-        // Initialize frontend log level from localStorage or config
-        const savedLevel = localStorage.getItem('frontend_log_level');
-        if (savedLevel) {
-            this.setFrontendLogLevel(savedLevel);
-        }
-
-        this.log('INFO', 'Logs module initialized');
+        // Load initial configuration and set frontend log level
+        this.loadLogConfig().then(() => {
+            // Initialize frontend log level from config
+            const savedLevel = localStorage.getItem('frontend_log_level') || this.currentConfig.frontend_log_level;
+            if (savedLevel) {
+                this.setFrontendLogLevel(savedLevel);
+            }
+            this.log('INFO', 'Logs module initialized with log level: ' + savedLevel);
+        }).catch(error => {
+            console.error('Failed to load log config during initialization:', error);
+            // Set default level
+            this.setFrontendLogLevel('INFO');
+            this.log('INFO', 'Logs module initialized with default log level');
+        });
     }
 };
 

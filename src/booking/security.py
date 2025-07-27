@@ -20,9 +20,9 @@ passlib_logger.setLevel(logging.ERROR)
 
 logger = get_logger("security")
 
-SECRET_KEY = "your-secret-key"  # Change this in a real application
+SECRET_KEY = "b34195f2-f1c8-407f-b84e-1102988e0fd8"  # Change this in a real application
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 120  # 2 hours - increased from 30 minutes to reduce frequent logouts
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Create password context with explicit bcrypt configuration

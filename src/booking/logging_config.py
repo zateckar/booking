@@ -138,11 +138,11 @@ def setup_logging():
     """Configure application logging"""
     # Create database handler
     db_handler = DatabaseLogHandler()
-    db_handler.setLevel(logging.INFO)
+    db_handler.setLevel(logging.DEBUG)  # Start with DEBUG, will be updated by stored config
     
     # Create console handler for development
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(logging.DEBUG)  # Start with DEBUG, will be updated by stored config
     
     # Create timezone-aware formatter
     formatter = TimezoneAwareFormatter(
@@ -156,13 +156,19 @@ def setup_logging():
     root_logger.addHandler(db_handler)
     root_logger.addHandler(console_handler)
     
-    # Configure specific loggers
+    # Store references to handlers for later level updates
+    root_logger._booking_db_handler = db_handler
+    root_logger._booking_console_handler = console_handler
+    
+    # Configure specific loggers with initial levels (will be overridden by stored config)
     loggers_config = {
         'booking': logging.INFO,
         'booking.scheduler': logging.INFO,
         'booking.email_service': logging.INFO,
         'booking.routers': logging.INFO,
         'booking.auth': logging.INFO,
+        'booking.database': logging.INFO,
+        'booking.services': logging.INFO,
         'uvicorn': logging.WARNING,
         'sqlalchemy.engine': logging.WARNING,
     }
@@ -196,20 +202,119 @@ def apply_stored_log_configuration():
                     root_logger = logging.getLogger()
                     root_logger.setLevel(log_level)
                     
-                    # Apply to specific loggers
-                    for logger_name in ["booking", "booking.database", "booking.services", "booking.routers"]:
+                    # Update handler levels as well
+                    if hasattr(root_logger, '_booking_db_handler'):
+                        root_logger._booking_db_handler.setLevel(log_level)
+                    if hasattr(root_logger, '_booking_console_handler'):
+                        root_logger._booking_console_handler.setLevel(log_level)
+                    
+                    # Apply to ALL existing loggers that start with "booking"
+                    # This catches any logger created with logging.getLogger(__name__) or get_logger()
+                    logger_dict = logging.getLogger().manager.loggerDict
+                    updated_loggers = []
+                    
+                    for logger_name, logger_obj in logger_dict.items():
+                        if logger_name.startswith('booking'):
+                            if isinstance(logger_obj, logging.Logger):
+                                logger_obj.setLevel(log_level)
+                                updated_loggers.append(logger_name)
+                            elif hasattr(logger_obj, 'logger'):
+                                # Handle PlaceHolder objects
+                                logger_obj.logger.setLevel(log_level)
+                                updated_loggers.append(logger_name)
+                    
+                    # Also apply to specific known booking loggers to ensure they exist
+                    booking_loggers = [
+                        "booking", "booking.database", "booking.services", "booking.routers",
+                        "booking.scheduler", "booking.email_service", "booking.auth",
+                        "booking.logging_config", "booking.oidc", "booking.security",
+                        "booking.timezone_service", "booking.claims_service", "booking.dynamic_reports_service",
+                        "booking.migrations", "booking.migrations.manager", "booking.migrations.discovery",
+                        "booking.migrations.runner", "booking.migrations.schema_version", "booking.migrations.base",
+                        "booking.routers.admin", "booking.routers.admin.logs", "booking.routers.admin.users",
+                        "booking.routers.admin.bookings", "booking.routers.admin.parking_lots", "booking.routers.admin.parking_spaces",
+                        "booking.routers.admin.oidc", "booking.routers.admin.oidc_claims", "booking.routers.admin.claims_mapping",
+                        "booking.routers.admin.email_settings", "booking.routers.admin.timezone_settings",
+                        "booking.routers.admin.styling_settings", "booking.routers.admin.dynamic_reports",
+                        "booking.routers.admin.migrations", "booking.routers.admin.backup_settings",
+                        "booking.routers.users", "booking.routers.bookings", "booking.routers.auth", "booking.routers.parking_lots",
+                        "booking.backup_service", "booking.main"
+                    ]
+                    
+                    for logger_name in booking_loggers:
                         specific_logger = logging.getLogger(logger_name)
                         specific_logger.setLevel(log_level)
+                        if logger_name not in updated_loggers:
+                            updated_loggers.append(logger_name)
                     
                     # Log the configuration application
                     logger = logging.getLogger("booking.logging_config")
-                    logger.info(f"Applied stored backend log level: {log_level_name}")
+                    logger.info(f"Applied stored backend log level: {log_level_name} to {len(updated_loggers)} loggers and handlers: {', '.join(sorted(updated_loggers))}")
         finally:
             db.close()
     except Exception as e:
         # Don't let logging configuration errors prevent app startup
         # Use basic print since logging might not be fully configured yet
         print(f"Warning: Could not apply stored log configuration: {e}")
+
+
+def apply_log_level_change(log_level_name: str):
+    """Apply a log level change immediately to all loggers and handlers"""
+    if hasattr(logging, log_level_name):
+        log_level = getattr(logging, log_level_name)
+        
+        # Apply to root logger
+        root_logger = logging.getLogger()
+        root_logger.setLevel(log_level)
+        
+        # Update handler levels as well
+        if hasattr(root_logger, '_booking_db_handler'):
+            root_logger._booking_db_handler.setLevel(log_level)
+        if hasattr(root_logger, '_booking_console_handler'):
+            root_logger._booking_console_handler.setLevel(log_level)
+        
+        # Apply to ALL existing loggers that start with "booking"
+        # This catches any logger created with logging.getLogger(__name__) or get_logger()
+        logger_dict = logging.getLogger().manager.loggerDict
+        updated_loggers = []
+        
+        for logger_name, logger_obj in logger_dict.items():
+            if logger_name.startswith('booking'):
+                if isinstance(logger_obj, logging.Logger):
+                    logger_obj.setLevel(log_level)
+                    updated_loggers.append(logger_name)
+                elif hasattr(logger_obj, 'logger'):
+                    # Handle PlaceHolder objects
+                    logger_obj.logger.setLevel(log_level)
+                    updated_loggers.append(logger_name)
+        
+        # Also apply to specific known booking loggers to ensure they exist
+        booking_loggers = [
+            "booking", "booking.database", "booking.services", "booking.routers",
+            "booking.scheduler", "booking.email_service", "booking.auth",
+            "booking.logging_config", "booking.oidc", "booking.security",
+            "booking.timezone_service", "booking.claims_service", "booking.dynamic_reports_service",
+            "booking.migrations", "booking.migrations.manager", "booking.migrations.discovery",
+            "booking.migrations.runner", "booking.migrations.schema_version", "booking.migrations.base",
+            "booking.routers.admin", "booking.routers.admin.logs", "booking.routers.admin.users",
+            "booking.routers.admin.bookings", "booking.routers.admin.parking_lots", "booking.routers.admin.parking_spaces",
+            "booking.routers.admin.oidc", "booking.routers.admin.oidc_claims", "booking.routers.admin.claims_mapping",
+            "booking.routers.admin.email_settings", "booking.routers.admin.timezone_settings",
+            "booking.routers.admin.styling_settings", "booking.routers.admin.dynamic_reports",
+            "booking.routers.admin.migrations", "booking.routers.admin.backup_settings",
+            "booking.routers.users", "booking.routers.bookings", "booking.routers.auth", "booking.routers.parking_lots",
+            "booking.backup_service", "booking.main"
+        ]
+        
+        for logger_name in booking_loggers:
+            specific_logger = logging.getLogger(logger_name)
+            specific_logger.setLevel(log_level)
+            if logger_name not in updated_loggers:
+                updated_loggers.append(logger_name)
+        
+        # Log the successful update
+        config_logger = logging.getLogger("booking.logging_config")
+        config_logger.info(f"Applied log level {log_level_name} to {len(updated_loggers)} loggers: {', '.join(sorted(updated_loggers))}")
 
 
 def get_logger(name: str) -> logging.Logger:

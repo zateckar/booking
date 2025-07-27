@@ -617,9 +617,9 @@ async function showBookingDetails(spaceId, spaceNumber) {
         const startDateTime = new Date(start).toISOString();
         const endDateTime = new Date(end).toISOString();
         
-        // Fetch booking details for this space in the current time range
+        // Fetch all bookings in the time range using admin endpoint
         const response = await window.auth.makeAuthenticatedRequest(
-            `/api/bookings/?space_id=${spaceId}&start_time=${encodeURIComponent(startDateTime)}&end_time=${encodeURIComponent(endDateTime)}`
+            `/api/bookings/all?start_date=${start.split('T')[0]}&end_date=${end.split('T')[0]}`
         );
         
         if (!response.ok) {
@@ -628,27 +628,29 @@ async function showBookingDetails(spaceId, spaceNumber) {
         
         const bookings = await response.json();
         
-        // Find the current booking for this space
-        const currentTime = new Date();
-        const currentBooking = bookings.find(booking => 
+        // Find booking for this space that overlaps with the selected time range
+        const selectedStart = new Date(startDateTime);
+        const selectedEnd = new Date(endDateTime);
+        
+        const relevantBooking = bookings.find(booking => 
             booking.space.id === spaceId && 
             !booking.is_cancelled &&
-            new Date(booking.start_time) <= currentTime &&
-            new Date(booking.end_time) >= currentTime
+            new Date(booking.start_time) < selectedEnd &&
+            new Date(booking.end_time) > selectedStart
         );
         
-        if (currentBooking) {
+        if (relevantBooking) {
             // Populate modal with booking details
-            document.getElementById('booking-detail-user').textContent = currentBooking.user.email;
-            document.getElementById('booking-detail-license-plate').textContent = currentBooking.license_plate;
-            document.getElementById('booking-detail-start-time').textContent = new Date(currentBooking.start_time).toLocaleString([], {
+            document.getElementById('booking-detail-user').textContent = relevantBooking.user.email;
+            document.getElementById('booking-detail-license-plate').textContent = relevantBooking.license_plate;
+            document.getElementById('booking-detail-start-time').textContent = new Date(relevantBooking.start_time).toLocaleString([], {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
                 hour: '2-digit',
                 minute: '2-digit'
             });
-            document.getElementById('booking-detail-end-time').textContent = new Date(currentBooking.end_time).toLocaleString([], {
+            document.getElementById('booking-detail-end-time').textContent = new Date(relevantBooking.end_time).toLocaleString([], {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
@@ -656,7 +658,7 @@ async function showBookingDetails(spaceId, spaceNumber) {
                 minute: '2-digit'
             });
         } else {
-            // No current booking found (might be a future booking)
+            // No booking found for the selected time range
             document.getElementById('booking-detail-user').textContent = 'Booking not found';
             document.getElementById('booking-detail-license-plate').textContent = '-';
         }

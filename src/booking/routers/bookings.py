@@ -102,14 +102,20 @@ def read_all_bookings(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
 ):
+    from datetime import datetime, timezone
+    
     query = db.query(models.Booking).options(
         joinedload(models.Booking.user),
         joinedload(models.Booking.space).joinedload(models.ParkingSpace.parking_lot),
     )
     if start_date:
-        query = query.filter(models.Booking.start_time >= start_date)
+        # Convert date to datetime at start of day (00:00:00 UTC)
+        start_datetime = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        query = query.filter(models.Booking.start_time >= start_datetime)
     if end_date:
-        query = query.filter(models.Booking.end_time <= end_date)
+        # Convert date to datetime at end of day (23:59:59 UTC)
+        end_datetime = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
+        query = query.filter(models.Booking.end_time <= end_datetime)
 
     bookings = query.all()
     return bookings

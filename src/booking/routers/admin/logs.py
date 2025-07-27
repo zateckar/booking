@@ -258,15 +258,9 @@ def update_log_config(
             )
             db.add(backend_config)
         
-        # Apply the log level change immediately
-        root_logger = logging.getLogger()
-        new_level = getattr(logging, config_update.backend_log_level.upper())
-        root_logger.setLevel(new_level)
-        
-        # Also update specific loggers
-        for logger_name in ["booking", "booking.database", "booking.services", "booking.routers"]:
-            specific_logger = logging.getLogger(logger_name)
-            specific_logger.setLevel(new_level)
+        # Apply the log level change immediately to all loggers and handlers
+        from ...logging_config import apply_log_level_change
+        apply_log_level_change(config_update.backend_log_level.upper())
         
         logger.info(f"Backend log level updated to {config_update.backend_log_level.upper()}")
     
