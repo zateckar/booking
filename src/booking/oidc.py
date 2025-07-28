@@ -260,24 +260,37 @@ async def process_auth_response(request: Request, provider_name: str):
         if client is None:
             raise ValueError(f"Failed to register OAuth client for provider '{provider.issuer}'")
         
-        # The high-level `client.authorize_access_token(request)` can fail with a
-        # `TypeError: ... got multiple values for keyword argument 'redirect_uri'`
-        # if the OIDC provider includes `redirect_uri` in the auth callback query
-        # parameters. Authlib's framework integration then provides the parameter twice.
+        # The high-level wrappers in authlib (`client.authorize_access_token` or
+        # even `client.fetch_access_token`) can sometimes pass the `redirect_uri`
+        # parameter multiple times, leading to a `TypeError`. This can happen if
+        # the `redirect_uri` is present in both the session and the request's
+        # query parameters.
         #
-        # To create a robust fix, we bypass the high-level wrappers and use the
-        # underlying OAuth2 session context provided by the client. This gives us
-        # direct control over the token exchange.
+        # To create a definitive fix, we bypass all framework integration "magic"
+        # and construct the `OAuth2Session` manually. This gives us full and
+        # explicit control over all parameters sent to the token endpoint.
         try:
+            from authlib.oauth2.client import OAuth2Session
+
             code = request.query_params.get('code')
             if not code:
                 raise ValueError("Authorization code not found in request query parameters.")
 
-            with client.session_context(request) as session:
-                # The `session` object is an `OAuth2Session` instance that has been
-                # correctly configured with the `redirect_uri` from the user's session.
-                # We can now call `fetch_access_token` on it directly, only providing the code.
-                token = await session.fetch_access_token(code=code)
+            # The redirect_uri used for the token exchange MUST match the one used
+            # in the initial authorization request. Authlib stores this in the session.
+            redirect_uri = request.session.get(f'_redirect_uri_{client.name}')
+            if not redirect_uri:
+                # This should not happen in a normal flow. If it's missing,
+                # the token exchange will fail.
+                raise ValueError("Could not find redirect_uri in session. OIDC flow is broken.")
+
+            async with OAuth2Session(
+                client_id=client.client_id, client_secret=client.client_secret,
+                token_endpoint=client.token_endpoint, redirect_uri=redirect_uri,
+                scope=client.scope, **client.client_kwargs
+            ) as session:
+                token = await session.fetch_access_token(code=code, grant_type='authorization_code')
+
         except Exception as e:
             logger.error(f"Token exchange failed for provider {provider_name}: {e}")
             raise ValueError(f"Failed to fetch access token: {e}")
