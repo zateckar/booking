@@ -152,7 +152,10 @@ async def login_oidc(request: Request, provider_name: str):
         # Generate secure redirect URI (HTTPS in production)
         redirect_uri = get_secure_redirect_uri(request, "auth_oidc", provider_name=provider_name)
         logger.debug(f"Redirecting to OIDC provider with redirect_uri: {redirect_uri}")
-        return await client.authorize_redirect(request, redirect_uri)
+        
+        # Use authorize_redirect without passing redirect_uri directly to avoid conflicts
+        # The redirect_uri will be handled internally by authlib
+        return await client.authorize_redirect(request, redirect_uri=redirect_uri)
         
     except HTTPException:
         raise

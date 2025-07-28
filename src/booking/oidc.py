@@ -260,10 +260,42 @@ async def process_auth_response(request: Request, provider_name: str):
         if client is None:
             raise ValueError(f"Failed to register OAuth client for provider '{provider.issuer}'")
         
-        # Get the authorization token. We don't pass redirect_uri explicitly to avoid
-        # "multiple values for keyword argument" error since authlib automatically
-        # extracts it from the request state.
-        token = await client.authorize_access_token(request)
+        # Get the authorization token, handling potential redirect_uri conflicts
+        try:
+            # First try without explicit redirect_uri (authlib should handle it automatically)
+            token = await client.authorize_access_token(request)
+        except TypeError as e:
+            if "multiple values for keyword argument 'redirect_uri'" in str(e):
+                # If there's a redirect_uri conflict, try alternative approaches
+                logger.warning(f"Redirect URI conflict detected, attempting workaround: {e}")
+                
+                # Try to manually construct the token request to bypass the conflict
+                try:
+                    # Get the authorization code from the request
+                    code = request.query_params.get('code')
+                    state = request.query_params.get('state')
+                    
+                    if not code:
+                        raise ValueError("No authorization code received from OIDC provider")
+                    
+                    # Construct redirect_uri manually
+                    redirect_uri = get_secure_redirect_uri(request, "auth_oidc", provider_name=provider_name)
+                    
+                    # Use the client's fetch_access_token method directly with proper parameters
+                    token = await client.fetch_access_token(
+                        code=code,
+                        redirect_uri=redirect_uri,
+                        grant_type='authorization_code'
+                    )
+                    
+                    logger.info("Successfully obtained token using manual approach")
+                    
+                except Exception as manual_error:
+                    logger.error(f"Manual token exchange also failed: {manual_error}")
+                    raise ValueError(f"Failed to exchange authorization code for token: {manual_error}")
+            else:
+                # Re-raise if it's a different TypeError
+                raise
         
         # Log detailed token information for debugging and auditing
         log_token_information(token, provider_name)
