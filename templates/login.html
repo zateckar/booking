@@ -19,7 +19,17 @@
             </form>
             
             <!-- OIDC Options -->
-            <div id="oidc-login-buttons" class="text-center mt-3"></div>
+            <div id="oidc-login-buttons" class="text-center mt-3">
+                {% if providers %}
+                <hr>
+                <p class="text-muted">Or sign in with</p>
+                    {% for provider in providers %}
+                    <a href="/oidc/login/{{ provider.id }}" class="btn btn-primary">
+                        <i class="bi bi-shield-lock"></i> {{ provider.display_name }}
+                    </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
         </div>
 
         <div id="main-content" style="display: none;">

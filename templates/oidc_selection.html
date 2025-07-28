@@ -12,7 +12,7 @@
                 <!-- OIDC Provider Buttons -->
                 <div class="d-grid gap-2 mb-4">
                     {% for provider in providers %}
-                    <a href="/api/login/oidc/{{ provider.issuer }}" class="btn btn-primary btn-lg">
+                    <a href="/oidc/login/{{ provider.id }}" class="btn btn-primary btn-lg">
                         <i class="bi bi-shield-lock-fill me-2"></i>
                         {{ provider.display_name }}
                     </a>
