@@ -11,10 +11,26 @@ logger = get_logger("database")
 # Check if DATABASE_URL is set in environment, otherwise use default path
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///booking.db")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
+# Configure database engine with proper connection pooling
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    # SQLite configuration
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, 
+        connect_args={"check_same_thread": False},
+        pool_pre_ping=True,
+        pool_recycle=300  # Recycle connections every 5 minutes
+    )
+else:
+    # PostgreSQL/MySQL configuration with connection pooling
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        pool_size=10,  # Increase pool size
+        max_overflow=20,  # Allow more overflow connections
+        pool_timeout=30,  # Wait up to 30 seconds for a connection
+        pool_pre_ping=True,  # Verify connections before use
+        pool_recycle=1800,  # Recycle connections every 30 minutes
+        echo=False  # Set to True for SQL debugging
+    )
 
 # Enable foreign key constraints for SQLite
 @event.listens_for(engine, "connect")

@@ -174,7 +174,10 @@ async def ensure_oidc_client_registered(provider: models.OIDCProvider) -> Any:
             name=provider.issuer,
             client_id=provider.client_id,
             client_secret=provider.client_secret,
-            client_kwargs={"scope": provider.scopes},
+            client_kwargs={
+                "scope": provider.scopes,
+                "code_challenge_method": "S256"  # Use PKCE for better security
+            },
             token_endpoint_auth_method='client_secret_post',
             # Unpack the server_metadata dictionary into keyword arguments.
             # This is the method that works with this version of `authlib`
@@ -239,7 +242,7 @@ def log_token_information(token: Dict[str, Any], provider_name: str, user_email:
 
 
 async def process_auth_response(request: Request, provider_name: str):
-
+    db = None
     try:
         # The provider_name is already URL-decoded by the route handler
         logger.debug(f"Processing auth response for provider: '{provider_name}'")
@@ -257,9 +260,9 @@ async def process_auth_response(request: Request, provider_name: str):
         if client is None:
             raise ValueError(f"Failed to register OAuth client for provider '{provider.issuer}'")
         
-        # Get the authorization token. The request object already contains the redirect_uri
-        # information that authlib will automatically extract and use for token exchange.
-        # Passing it explicitly causes a "multiple values for keyword argument" error.
+        # Get the authorization token. We don't pass redirect_uri explicitly to avoid
+        # "multiple values for keyword argument" error since authlib automatically
+        # extracts it from the request state.
         token = await client.authorize_access_token(request)
         
         # Log detailed token information for debugging and auditing
@@ -285,7 +288,6 @@ async def process_auth_response(request: Request, provider_name: str):
         log_token_information(token, provider_name, email)
         
         # Process OIDC claims using the claims mapping service
-        db = next(get_db())
         claims_service = ClaimsMappingService(db)
         
         try:
@@ -341,7 +343,8 @@ async def process_auth_response(request: Request, provider_name: str):
         except ClaimsProcessingError as e:
             logger.error(f"Claims processing failed for user {email}: {e}")
             # If claims processing fails due to missing required claims, reject authentication
-            db.close()
+            if db:
+                db.close()
             return None
         except Exception as e:
             logger.error(f"Unexpected error during claims processing for user {email}: {e}")
@@ -358,6 +361,10 @@ async def process_auth_response(request: Request, provider_name: str):
         # Log the error for debugging
         logger.error(f"OIDC authentication failed for provider {provider_name}: {str(e)}")
         return None
+    finally:
+        # Ensure database session is closed
+        if db:
+            db.close()
 
 
 async def get_oidc_logout_url(provider_name: str, id_token: Optional[str] = None, post_logout_redirect_uri: Optional[str] = None) -> Optional[str]:
@@ -372,7 +379,7 @@ async def get_oidc_logout_url(provider_name: str, id_token: Optional[str] = None
     Returns:
         The logout URL to redirect the user to, or None if provider doesn't support logout
     """
-
+    db = None
     try:
         logger.info(f"Getting OIDC logout URL for provider: {provider_name}")
         
@@ -432,3 +439,6 @@ async def get_oidc_logout_url(provider_name: str, id_token: Optional[str] = None
     except Exception as e:
         logger.error(f"Error generating OIDC logout URL for {provider_name}: {e}")
         return None
+    finally:
+        if db:
+            db.close()

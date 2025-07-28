@@ -165,11 +165,16 @@ def get_dynamic_styles(
     db: Session = Depends(get_db)
 ):
     """Generate dynamic CSS based on current styling settings"""
-    settings = get_styling_settings(db)
-    
-    if not settings.enabled:
-        # Return empty CSS if styling is disabled
-        return Response(content="/* Custom styling disabled */", media_type="text/css")
+    try:
+        settings = get_styling_settings(db)
+        
+        if not settings.enabled:
+            # Return empty CSS if styling is disabled
+            return Response(content="/* Custom styling disabled */", media_type="text/css")
+    except Exception as e:
+        logger.error(f"Failed to get styling settings: {e}")
+        # Return default CSS if database query fails
+        return Response(content="/* Error loading custom styling - using defaults */", media_type="text/css")
     
     # Generate CSS custom properties
     css_content = f"""
@@ -304,18 +309,32 @@ def get_public_styling_info(
     db: Session = Depends(get_db)
 ):
     """Get public styling information (no authentication required)"""
-    settings = get_styling_settings(db)
-    
-    return {
-        "enabled": settings.enabled,
-        "navbar_brand_text": settings.navbar_brand_text,
-        "logo_path": settings.logo_path if settings.enabled else None,
-        "logo_alt_text": settings.logo_alt_text if settings.enabled else "Company Logo",
-        "logo_max_height": settings.logo_max_height if settings.enabled else 50,
-        "login_logo_max_height": settings.login_logo_max_height if settings.enabled else 100,
-        "show_logo_in_navbar": settings.show_logo_in_navbar if settings.enabled else True,
-        "show_logo_on_login": settings.show_logo_on_login if settings.enabled else True
-    }
+    try:
+        settings = get_styling_settings(db)
+        
+        return {
+            "enabled": settings.enabled,
+            "navbar_brand_text": settings.navbar_brand_text,
+            "logo_path": settings.logo_path if settings.enabled else None,
+            "logo_alt_text": settings.logo_alt_text if settings.enabled else "Company Logo",
+            "logo_max_height": settings.logo_max_height if settings.enabled else 50,
+            "login_logo_max_height": settings.login_logo_max_height if settings.enabled else 100,
+            "show_logo_in_navbar": settings.show_logo_in_navbar if settings.enabled else True,
+            "show_logo_on_login": settings.show_logo_on_login if settings.enabled else True
+        }
+    except Exception as e:
+        logger.error(f"Failed to get public styling info: {e}")
+        # Return safe defaults if database query fails
+        return {
+            "enabled": False,
+            "navbar_brand_text": "Booking System",
+            "logo_path": None,
+            "logo_alt_text": "Company Logo",
+            "logo_max_height": 50,
+            "login_logo_max_height": 100,
+            "show_logo_in_navbar": True,
+            "show_logo_on_login": True
+        }
 
 
 @router.get("/preview-styles.css")

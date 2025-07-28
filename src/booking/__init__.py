@@ -78,8 +78,10 @@ async def read_root(request: Request):
     
     # Get available OIDC providers
     db = next(get_db())
-    providers = db.query(models.OIDCProvider).all()
-    db.close()
+    try:
+        providers = db.query(models.OIDCProvider).all()
+    finally:
+        db.close()
     
     if not providers:
         # No OIDC providers configured, redirect to local login
@@ -129,6 +131,7 @@ async def login_oidc(request: Request, provider_name: str):
     decoded_provider_name = unquote(provider_name)
     logger.info(f"OIDC login attempt for provider: {decoded_provider_name}")
     
+    db = None
     try:
         db = next(get_db())
         provider = (
@@ -156,6 +159,9 @@ async def login_oidc(request: Request, provider_name: str):
     except Exception as e:
         logger.error(f"Error during OIDC login for provider {decoded_provider_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"OIDC login failed: {str(e)}")
+    finally:
+        if db:
+            db.close()
 
 
 @app.get("/api/auth/oidc/{provider_name:path}")
@@ -231,20 +237,23 @@ async def get_public_oidc_providers():
     logger.debug("Fetching public OIDC providers")
     
     db = next(get_db())
-    providers = db.query(models.OIDCProvider).all()
-    
-    # Return only the information needed for login buttons (no secrets)
-    public_providers = [
-        {
-            "id": provider.id,
-            "issuer": provider.issuer,
-            "display_name": provider.display_name or provider.issuer.replace("_", " ").title()
-        }
-        for provider in providers
-    ]
-    
-    logger.debug(f"Found {len(public_providers)} OIDC providers")
-    return public_providers
+    try:
+        providers = db.query(models.OIDCProvider).all()
+        
+        # Return only the information needed for login buttons (no secrets)
+        public_providers = [
+            {
+                "id": provider.id,
+                "issuer": provider.issuer,
+                "display_name": provider.display_name or provider.issuer.replace("_", " ").title()
+            }
+            for provider in providers
+        ]
+        
+        logger.debug(f"Found {len(public_providers)} OIDC providers")
+        return public_providers
+    finally:
+        db.close()
 
 
 @app.get("/logout-complete")
