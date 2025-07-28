@@ -28,7 +28,7 @@ def get_secure_redirect_uri(request: Request, endpoint: str, **path_params) -> s
     # Generate the base URI using the request's url_for method
     redirect_uri = str(request.url_for(endpoint, **path_params))
     
-    # Check if we should force HTTPS based on various indicators
+    """ # Check if we should force HTTPS based on various indicators
     force_https = False
     
     # Method 1: Check for explicit environment variable
@@ -56,7 +56,7 @@ def get_secure_redirect_uri(request: Request, endpoint: str, **path_params) -> s
     # Apply HTTPS if determined necessary
     if force_https and redirect_uri.startswith("http://"):
         redirect_uri = redirect_uri.replace("http://", "https://", 1)
-        logger.info(f"Redirect URI scheme changed to HTTPS for production: {redirect_uri}")
+        logger.info(f"Redirect URI scheme changed to HTTPS for production: {redirect_uri}") """
     
     return redirect_uri
 
@@ -160,15 +160,6 @@ async def ensure_oidc_client_registered(provider: models.OIDCProvider) -> Any:
             resp = await http_client.get(provider.well_known_url)
             resp.raise_for_status()
             server_metadata = resp.json()
-
-        jwks_uri = server_metadata.get('jwks_uri')
-        if jwks_uri:
-            logger.info(f"Fetching and fixing JWKS for {provider.issuer} from {jwks_uri}")
-            # Use the robust JWKS validation and fixing function
-            fixed_jwks = await validate_and_fix_jwks(jwks_uri)
-            server_metadata['jwks'] = fixed_jwks
-            # Remove jwks_uri to ensure our fixed jwks is used by authlib
-            server_metadata.pop('jwks_uri', None)
         
         oauth.register(
             name=provider.issuer,
