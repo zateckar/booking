@@ -278,7 +278,7 @@ function updateNavbarVisibility() {
 // Fetch OIDC providers for login page
 async function fetchOidcProvidersForLogin() {
     try {
-        const response = await fetch('/api/oidc/providers');
+        const response = await fetch('/oidc/providers');
         if (response.ok) {
             const providers = await response.json();
             const buttonsContainer = document.getElementById('oidc-login-buttons');
@@ -297,7 +297,7 @@ async function fetchOidcProvidersForLogin() {
             }
             providers.forEach(provider => {
                 const button = document.createElement('a');
-                button.href = `/api/login/oidc/${provider.issuer}`;
+                button.href = `/oidc/login/${provider.id}`;
                 button.className = 'btn btn-primary me-2 mb-2';
                 button.textContent = `${provider.display_name}`;
                 buttonsContainer.appendChild(button);
