@@ -33,33 +33,25 @@ def get_base_url() -> str:
 
 
 def get_provider_name(provider: models.OIDCProvider) -> str:
-    """Generate a consistent provider name for OAuth client registration."""
-    # Use a combination of issuer domain and display name for uniqueness
+    """Generate a consistent provider name for OAuth client registration based on issuer domain only."""
     try:
         import re
-        import unicodedata
         
         parsed = urlparse(provider.issuer)
         domain = parsed.netloc or parsed.path
         
-        # Normalize Unicode characters to ASCII equivalents
-        display_name = provider.display_name
-        # First normalize to decomposed form, then remove accents, then convert to ASCII
-        display_name = unicodedata.normalize('NFD', display_name)
-        display_name = ''.join(c for c in display_name if unicodedata.category(c) != 'Mn')
-        
-        # Create a safe name using domain and display name
-        safe_name = f"{domain}_{display_name}".replace(" ", "_").replace(".", "_")
+        # Create a safe name using only the domain
+        safe_name = domain.replace(".", "_").replace("-", "_")
         
         # Remove any remaining non-ASCII characters and ensure URL safety
-        safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', safe_name)
+        safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', safe_name)
         
         # Remove consecutive underscores and limit length
         safe_name = re.sub(r'_+', '_', safe_name).strip('_')
         
         return safe_name[:50]  # Limit length
     except Exception as e:
-        logger.warning(f"Error generating provider name for {provider.display_name}: {e}")
+        logger.warning(f"Error generating provider name for issuer {provider.issuer}: {e}")
         # Fallback to just using the ID
         return f"provider_{provider.id}"
 
@@ -145,9 +137,25 @@ def refresh_provider_registration(provider_id: int):
                 return
             
             # Unregister old registration (try multiple possible names)
-            old_name = get_provider_name(provider)
-            unregister_provider(old_name)
+            new_name = get_provider_name(provider)
+            unregister_provider(new_name)
             unregister_provider(provider.issuer)  # Legacy name format
+            
+            # Also try to unregister old combined format (domain_displayname)
+            try:
+                import re
+                import unicodedata
+                parsed = urlparse(provider.issuer)
+                domain = parsed.netloc or parsed.path
+                display_name = provider.display_name
+                display_name = unicodedata.normalize('NFD', display_name)
+                display_name = ''.join(c for c in display_name if unicodedata.category(c) != 'Mn')
+                old_combined_name = f"{domain}_{display_name}".replace(" ", "_").replace(".", "_")
+                old_combined_name = re.sub(r'[^a-zA-Z0-9_-]', '_', old_combined_name)
+                old_combined_name = re.sub(r'_+', '_', old_combined_name).strip('_')[:50]
+                unregister_provider(old_combined_name)
+            except Exception as e:
+                logger.debug(f"Could not generate old combined name for cleanup: {e}")
             
             # Register with new configuration
             new_name = register_provider(provider)
@@ -386,6 +394,33 @@ async def get_oidc_logout_url(provider_name: str, id_token: Optional[str] = None
     except Exception as e:
         logger.error(f"Error generating OIDC logout URL for {provider_name}: {e}")
         return None
+
+
+def force_refresh_all_providers():
+    """
+    Force refresh all OIDC provider registrations.
+    This will clear all existing registrations and re-register all providers from the database.
+    Useful for fixing provider registration issues.
+    """
+    with get_db_session() as db:
+        try:
+            # Clear all existing OAuth client registrations
+            oauth._clients.clear()
+            logger.info("Cleared all existing OIDC provider registrations")
+            
+            # Re-register all providers from database
+            providers = db.query(models.OIDCProvider).all()
+            logger.info(f"Force refreshing {len(providers)} OIDC providers")
+            
+            for provider in providers:
+                try:
+                    register_provider(provider)
+                    logger.info(f"Successfully re-registered provider: {provider.display_name}")
+                except Exception as e:
+                    logger.error(f"Failed to re-register provider {provider.display_name}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Failed to force refresh OIDC providers: {e}")
 
 
 def get_available_providers() -> list[Dict[str, Any]]:

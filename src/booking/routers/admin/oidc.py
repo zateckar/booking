@@ -120,3 +120,19 @@ def delete_oidc_provider(provider_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Failed to delete OIDC provider {provider_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete OIDC provider")
+
+
+@router.post("/refresh-all", status_code=200)
+def refresh_all_oidc_providers():
+    """
+    Force refresh all OIDC provider registrations.
+    This clears all existing registrations and re-registers all providers from the database.
+    Useful for fixing provider registration issues.
+    """
+    try:
+        oidc.force_refresh_all_providers()
+        logger.info("Successfully force refreshed all OIDC providers")
+        return {"message": "All OIDC providers have been refreshed successfully"}
+    except Exception as e:
+        logger.error(f"Failed to force refresh OIDC providers: {e}")
+        raise HTTPException(status_code=500, detail="Failed to refresh OIDC providers")

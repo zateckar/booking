@@ -4,8 +4,6 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Database file
-      - booking_database:/app/booking.db
       # User data directories
       - booking_data:/app/data
       - booking_logs:/app/logs
@@ -20,7 +18,7 @@ services:
       - USE_HTTPS=true
       - BASE_URL=https://example.com
       - ENVIRONMENT=production
-      - DATABASE_URL=sqlite:///booking.db
+      - DATABASE_URL=sqlite:///data/booking.db
     restart: unless-stopped
     networks:
       - booking-network
