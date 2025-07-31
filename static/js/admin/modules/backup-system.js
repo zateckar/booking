@@ -408,6 +408,9 @@ const AdminBackup = {
 
     // Initialize backup system module
     init() {
+        // Initialize event listener flag
+        this._eventListenersAttached = false;
+
         // Setup form event listeners
         const backupForm = document.getElementById('backup-settings-form');
         if (backupForm) {
@@ -427,6 +430,12 @@ const AdminBackup = {
 
     // Setup button event listeners
     setupButtonEventListeners() {
+        // Prevent duplicate event listeners by checking if already attached
+        if (this._eventListenersAttached) {
+            console.log('Button event listeners already attached for backup system, skipping...');
+            return;
+        }
+
         // Test backup connection button
         const testConnectionBtn = document.getElementById('test-backup-connection-btn');
         if (testConnectionBtn) {
@@ -475,13 +484,17 @@ const AdminBackup = {
             refreshTimezoneBtn.addEventListener('click', this.loadTimezoneSettings.bind(this));
         }
 
+        // Mark event listeners as attached
+        this._eventListenersAttached = true;
         console.log('Button event listeners set up for backup system');
     },
 
     // Ensure initialization - called when tab is activated
     ensureInitialized() {
-        // Re-setup button event listeners in case DOM wasn't ready during initial load
-        this.setupButtonEventListeners();
+        // Only setup button event listeners if not already attached
+        if (!this._eventListenersAttached) {
+            this.setupButtonEventListeners();
+        }
         console.log('Backup system module ensured initialized');
     }
 };

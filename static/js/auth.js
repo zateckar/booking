@@ -277,14 +277,21 @@ function updateNavbarVisibility() {
 
 // Fetch OIDC providers for login page
 async function fetchOidcProvidersForLogin() {
+    const buttonsContainer = document.getElementById('oidc-login-buttons');
+    if (!buttonsContainer) return;
+    
+    // Check if there are already server-side rendered buttons
+    const existingButtons = buttonsContainer.querySelectorAll('a[href^="/oidc/login/"]');
+    if (existingButtons.length > 0) {
+        // Server-side buttons already exist, no need to fetch
+        return;
+    }
+    
     try {
         const response = await fetch('/oidc/providers');
         if (response.ok) {
             const providers = await response.json();
-            const buttonsContainer = document.getElementById('oidc-login-buttons');
-            if (!buttonsContainer) return;
             
-            buttonsContainer.innerHTML = '';
             if (providers.length > 0) {
                 const divider = document.createElement('hr');
                 divider.className = 'my-3';
@@ -294,14 +301,15 @@ async function fetchOidcProvidersForLogin() {
                 title.className = 'text-muted mb-2';
                 title.textContent = 'Or login with:';
                 buttonsContainer.appendChild(title);
+                
+                providers.forEach(provider => {
+                    const button = document.createElement('a');
+                    button.href = `/oidc/login/${provider.id}`;
+                    button.className = 'btn btn-primary me-2 mb-2';
+                    button.textContent = `${provider.display_name}`;
+                    buttonsContainer.appendChild(button);
+                });
             }
-            providers.forEach(provider => {
-                const button = document.createElement('a');
-                button.href = `/oidc/login/${provider.id}`;
-                button.className = 'btn btn-primary me-2 mb-2';
-                button.textContent = `${provider.display_name}`;
-                buttonsContainer.appendChild(button);
-            });
         }
     } catch (error) {
         console.error('Error fetching OIDC providers:', error);

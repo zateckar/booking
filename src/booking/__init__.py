@@ -12,6 +12,7 @@ from urllib.parse import unquote
 from . import models, oidc
 from .database import engine, get_db
 from .routers.admin import router as admin_router
+from .routers.admin import api as admin_api_router
 from .routers import bookings, users, parking_lots, auth, oidc as oidc_router
 from .oidc import initialize_oidc_providers
 from .scheduler import start_scheduler, stop_scheduler
@@ -55,6 +56,7 @@ app.include_router(parking_lots.router)
 app.include_router(auth.router)
 app.include_router(oidc_router.router, prefix="/oidc")
 app.include_router(admin_router, prefix="/api/admin")
+app.include_router(admin_api_router.router, prefix="/admin/api")
 
 
 @app.on_event("startup")

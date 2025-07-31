@@ -75,11 +75,32 @@ const AdminEmail = {
     init() {
         // Setup form event listeners
         const emailForm = document.getElementById('email-settings-form');
-        if (emailForm) {
+        if (emailForm && !emailForm.hasAttribute('data-email-listener')) {
             emailForm.addEventListener('submit', this.handleEmailSettingsSubmit.bind(this));
+            emailForm.setAttribute('data-email-listener', 'true');
+        }
+
+        // Setup button event listeners
+        const testEmailBtn = document.getElementById('test-email-btn');
+        if (testEmailBtn && !testEmailBtn.hasAttribute('data-email-listener')) {
+            testEmailBtn.addEventListener('click', this.testEmailConfig.bind(this));
+            testEmailBtn.setAttribute('data-email-listener', 'true');
+        }
+
+        const refreshEmailBtn = document.getElementById('refresh-email-settings-btn');
+        if (refreshEmailBtn && !refreshEmailBtn.hasAttribute('data-email-listener')) {
+            refreshEmailBtn.addEventListener('click', this.loadEmailSettings.bind(this));
+            refreshEmailBtn.setAttribute('data-email-listener', 'true');
         }
 
         console.log('Email settings module initialized');
+    },
+
+    // Ensure initialization - called when tab is activated
+    ensureInitialized() {
+        // Re-initialize if needed
+        this.init();
+        console.log('Email settings module ensured initialized');
     }
 };
 

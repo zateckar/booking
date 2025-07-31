@@ -73,6 +73,10 @@ class ClaimsMappingService:
             try:
                 claim_value = self._extract_claim_value(token_claims, mapping)
                 
+                # Skip processing if claim value is None (missing optional claim)
+                if claim_value is None:
+                    continue
+                
                 # Handle role mappings for admin authorization
                 if mapping.mapping_type == "role":
                     admin_granted = self._check_admin_role(claim_value, mapping)
@@ -134,9 +138,12 @@ class ClaimsMappingService:
                     claim_value = claim_value.lower() in ('true', '1', 'yes', 'on')
                 else:
                     claim_value = bool(claim_value)
-            elif mapping.mapping_type in ("string", "role", "attribute"):
+            elif mapping.mapping_type in ("string", "attribute"):
                 # Handle attribute as a generic string conversion
                 claim_value = str(claim_value)
+            elif mapping.mapping_type == "role":
+                # Keep role values as-is for proper role checking
+                pass
             
             return claim_value
             
@@ -145,7 +152,7 @@ class ClaimsMappingService:
     
     def _check_admin_role(self, claim_value: Any, mapping: models.OIDCClaimMapping) -> bool:
         """Check if claim value grants admin access according to role mapping"""
-        if not mapping.role_admin_values:
+        if not mapping.role_admin_values or claim_value is None:
             return False
         
         try:

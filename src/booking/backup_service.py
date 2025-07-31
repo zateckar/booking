@@ -6,6 +6,7 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Optional
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -280,3 +281,82 @@ class AzureBlobBackupService:
 def create_backup_service(storage_account: str, container_name: str, sas_token: str) -> AzureBlobBackupService:
     """Factory function to create backup service instance"""
     return AzureBlobBackupService(storage_account, container_name, sas_token)
+
+
+async def perform_backup():
+    """
+    Perform a database backup using the configured settings
+    This function is called by the backup API and scheduler
+    """
+    import os
+    
+    # Import database and models - use relative imports since this is in the booking package
+    try:
+        from .database import get_db
+        from .models import BackupSettings
+    except ImportError:
+        # Fallback for when called from different contexts
+        from src.booking.database import get_db
+        from src.booking.models import BackupSettings
+    
+    # Get database session
+    db = next(get_db())
+    
+    try:
+        # Get backup settings
+        settings = db.query(BackupSettings).first()
+        
+        if not settings or not settings.enabled:
+            logger.warning("Backup not enabled or settings not found")
+            return
+        
+        if not all([settings.storage_account, settings.container_name, settings.sas_token]):
+            logger.error("Backup settings incomplete")
+            return
+        
+        # Update backup status to running
+        settings.last_backup_status = "running"
+        settings.last_backup_error = None
+        db.commit()
+        
+        # Create backup service
+        backup_service = create_backup_service(
+            settings.storage_account,
+            settings.container_name,
+            settings.sas_token
+        )
+        
+        # Get database path
+        db_path = os.environ.get("DATABASE_URL", "booking.db")
+        if db_path.startswith("sqlite:///"):
+            db_path = db_path[10:]  # Remove sqlite:/// prefix
+        
+        # Perform backup
+        result = backup_service.upload_database_backup(db_path)
+        
+        # Update backup status
+        if result["success"]:
+            settings.last_backup_status = "success"
+            settings.last_backup_time = datetime.now(timezone.utc)
+            settings.last_backup_size_mb = result.get("file_size_mb")
+            settings.last_backup_error = None
+            logger.info(f"Backup completed successfully: {result.get('blob_name')}")
+        else:
+            settings.last_backup_status = "failed"
+            settings.last_backup_error = result.get("error", "Unknown error")
+            logger.error(f"Backup failed: {result.get('error')}")
+        
+        db.commit()
+        
+    except Exception as e:
+        logger.error(f"Backup process failed: {str(e)}")
+        try:
+            settings = db.query(BackupSettings).first()
+            if settings:
+                settings.last_backup_status = "failed"
+                settings.last_backup_error = str(e)
+                db.commit()
+        except:
+            pass
+    finally:
+        db.close()

@@ -16,12 +16,8 @@ class OIDCProviderManager extends HTMLElement {
 
     render() {
         this.shadowRoot.innerHTML = `
+            ${window.AdminSharedStyles?.getSharedStyles() || ''}
             <style>
-                :host {
-                    display: block;
-                    font-family: inherit;
-                }
-                
                 .provider-header {
                     display: flex;
                     justify-content: space-between;
@@ -50,57 +46,6 @@ class OIDCProviderManager extends HTMLElement {
                     font-weight: 600;
                 }
                 
-                .btn {
-                    padding: 0.375rem 0.75rem;
-                    margin: 0 0.125rem;
-                    border: 1px solid transparent;
-                    border-radius: 0.375rem;
-                    cursor: pointer;
-                    text-decoration: none;
-                    display: inline-block;
-                    font-size: 0.875rem;
-                    transition: all 0.15s ease-in-out;
-                }
-                
-                .btn-primary {
-                    color: #fff;
-                    background-color: #0d6efd;
-                    border-color: #0d6efd;
-                }
-                
-                .btn-primary:hover {
-                    background-color: #0b5ed7;
-                    border-color: #0a58ca;
-                }
-                
-                .btn-success {
-                    color: #fff;
-                    background-color: #198754;
-                    border-color: #198754;
-                }
-                
-                .btn-success:hover {
-                    background-color: #157347;
-                    border-color: #146c43;
-                }
-                
-                .btn-danger {
-                    color: #fff;
-                    background-color: #dc3545;
-                    border-color: #dc3545;
-                }
-                
-                .btn-danger:hover {
-                    background-color: #bb2d3b;
-                    border-color: #b02a37;
-                }
-                
-                .btn-sm {
-                    padding: 0.25rem 0.5rem;
-                    font-size: 0.75rem;
-                    border-radius: 0.25rem;
-                }
-                
                 .loading {
                     text-align: center;
                     padding: 2rem;
@@ -117,6 +62,50 @@ class OIDCProviderManager extends HTMLElement {
                     text-align: center;
                     padding: 2rem;
                     color: #6c757d;
+                }
+                
+                .provider-table-responsive {
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
+                
+                @media (max-width: 992px) {
+                    .provider-table th:nth-child(3),
+                    .provider-table td:nth-child(3) {
+                        display: none;
+                    }
+                }
+                
+                @media (max-width: 768px) {
+                    .provider-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 1rem;
+                    }
+                    
+                    .provider-header > div:last-child {
+                        align-self: stretch;
+                        display: flex;
+                        gap: 0.5rem;
+                    }
+                    
+                    .provider-header .btn {
+                        flex: 1;
+                    }
+                    
+                    .provider-table {
+                        font-size: 0.875rem;
+                    }
+                    
+                    .provider-table th,
+                    .provider-table td {
+                        padding: 0.5rem;
+                    }
+                    
+                    .provider-table th:nth-child(4),
+                    .provider-table td:nth-child(4) {
+                        display: none;
+                    }
                 }
             </style>
             
@@ -140,7 +129,7 @@ class OIDCProviderManager extends HTMLElement {
     setupEventListeners() {
         const addBtn = this.shadowRoot.getElementById('add-provider-btn');
         const refreshBtn = this.shadowRoot.getElementById('refresh-providers-btn');
-        
+
         addBtn.addEventListener('click', () => this.showAddModal());
         refreshBtn.addEventListener('click', () => this.loadProviders());
     }
@@ -148,33 +137,33 @@ class OIDCProviderManager extends HTMLElement {
     async waitForAuthAndLoad() {
         const content = this.shadowRoot.getElementById('providers-content');
         content.innerHTML = '<div class="loading">Loading providers...</div>';
-        
+
         // Wait for auth module to be ready
         let retries = 0;
         const maxRetries = 20; // 10 seconds max wait
-        
+
         while (retries < maxRetries) {
             if (window.auth && window.auth.makeAuthenticatedRequest && window.AdminAPI) {
                 await this.loadProviders();
                 return;
             }
-            
+
             retries++;
             await new Promise(resolve => setTimeout(resolve, 500));
         }
-        
+
         // If auth module still not ready after timeout
         content.innerHTML = '<div class="error">Authentication module not ready. Please refresh the page.</div>';
     }
-    
+
     async loadProviders() {
         const content = this.shadowRoot.getElementById('providers-content');
-        
+
         try {
             if (!window.AdminAPI || !window.auth) {
                 throw new Error('Required modules not loaded');
             }
-            
+
             const response = await AdminAPI.oidc.getAll();
             if (response.ok) {
                 this.providers = await response.json();
@@ -190,11 +179,14 @@ class OIDCProviderManager extends HTMLElement {
 
     renderProviders() {
         const content = this.shadowRoot.getElementById('providers-content');
-        
+
         if (this.providers.length === 0) {
             content.innerHTML = '<div class="empty">No OIDC providers configured</div>';
             return;
         }
+
+        const tableWrapper = document.createElement('div');
+        tableWrapper.className = 'provider-table-responsive';
         
         const table = document.createElement('table');
         table.className = 'provider-table';
@@ -223,9 +215,10 @@ class OIDCProviderManager extends HTMLElement {
                 `).join('')}
             </tbody>
         `;
-        
+
+        tableWrapper.appendChild(table);
         content.innerHTML = '';
-        content.appendChild(table);
+        content.appendChild(tableWrapper);
     }
 
     escapeHtml(unsafe) {

@@ -56,7 +56,24 @@ async function loadAdminModule(moduleName) {
 
 // Load web components
 async function loadWebComponents() {
-    const components = ['dashboard-card', 'dashboard-chart', 'oidc-provider-manager', 'claims-mapping-manager'];
+    // Load shared styles first
+    try {
+        const sharedStylesScript = document.createElement('script');
+        sharedStylesScript.src = '/static/js/admin/components/shared-styles.js';
+        sharedStylesScript.async = false; // Load synchronously to ensure it's available
+        
+        await new Promise((resolve, reject) => {
+            sharedStylesScript.onload = resolve;
+            sharedStylesScript.onerror = reject;
+            document.head.appendChild(sharedStylesScript);
+        });
+        
+        console.log('🎨 Shared styles loaded successfully');
+    } catch (error) {
+        console.error('❌ Failed to load shared styles:', error);
+    }
+    
+    const components = ['dashboard-card', 'dashboard-chart', 'oidc-provider-manager', 'claims-mapping-manager', 'backup-manager', 'timezone-manager', 'email-manager'];
     
     for (const component of components) {
         try {
@@ -65,12 +82,24 @@ async function loadWebComponents() {
             script.async = true;
             
             await new Promise((resolve, reject) => {
-                script.onload = resolve;
-                script.onerror = () => reject(new Error(`Failed to load component: ${component}`));
+                script.onload = () => {
+                    console.log(`✅ Web component script loaded: ${component}`);
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.error(`❌ Failed to load component script: ${component}`);
+                    reject(new Error(`Failed to load component: ${component}`));
+                };
                 document.head.appendChild(script);
             });
             
-            console.log(`Web component loaded: ${component}`);
+            console.log(`📦 Web component registered: ${component}`);
+            
+            // Verify the custom element is actually defined
+            setTimeout(() => {
+                const isDefined = customElements.get(component);
+                console.log(`🔍 Custom element '${component}' defined:`, !!isDefined);
+            }, 100);
         } catch (error) {
             console.error(`Error loading web component ${component}:`, error);
         }
@@ -156,10 +185,25 @@ function setupAdminEventListeners() {
             // The AdminStyling module will automatically load settings in its constructor
             console.log('Branding & Styling tab activated');
         }},
-        { id: 'system-tab', modules: ['backup-system', 'email-settings', 'timezone-settings'], objectNames: ['AdminBackup', 'AdminEmail', 'AdminTimezone'], load: async () => {
-            await window.AdminBackup.loadBackupSettings();
-            await window.AdminEmail.loadEmailSettings();
-            await window.AdminTimezone.loadTimezoneSettings();
+        { id: 'system-tab', modules: [], objectNames: [], load: async () => {
+            // All system functionality now handled by web components
+            // backup-manager, timezone-manager, and email-manager will auto-initialize
+            console.log('🔧 System tab loaded - checking for web components...');
+            
+            // Check if web components are present in DOM
+            const backupManager = document.querySelector('backup-manager');
+            const timezoneManager = document.querySelector('timezone-manager');
+            const emailManager = document.querySelector('email-manager');
+            
+            console.log('🔍 Web components in DOM:', {
+                backupManager: !!backupManager,
+                timezoneManager: !!timezoneManager,
+                emailManager: !!emailManager
+            });
+            
+            if (backupManager) console.log('🔧 backup-manager element found');
+            if (timezoneManager) console.log('🕐 timezone-manager element found');
+            if (emailManager) console.log('📧 email-manager element found');
         }}
     ];
 

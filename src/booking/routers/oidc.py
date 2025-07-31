@@ -186,7 +186,7 @@ async def get_oidc_providers():
     """
     try:
         providers = oidc.get_available_providers()
-        return {"providers": providers}
+        return providers  # Return providers directly instead of nested
     except Exception as e:
         logger.error(f"Failed to get OIDC providers: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve OIDC providers")

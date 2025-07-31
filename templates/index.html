@@ -1429,214 +1429,31 @@
 
                     <!-- System Status -->
                     <div class="tab-pane fade" id="system-pane" role="tabpanel">
-                        <!-- Database Backup Settings -->
+                        <!-- Configuration Components Row -->
                         <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5>Database Backup - Azure Blob Storage</h5>
-                                        <div>
-                                            <button class="btn btn-success btn-sm me-2" id="test-backup-connection-btn">Test Connection</button>
-                                            <button class="btn btn-warning btn-sm me-2" id="backup-now-btn">Backup Now</button>
-                                            <button class="btn btn-info btn-sm" id="refresh-backup-settings-btn">Refresh</button>
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="backup-settings-form">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <div class="form-check form-switch">
-                                                            <input class="form-check-input" type="checkbox" id="backup-enabled">
-                                                            <label class="form-check-label">Enable Automatic Backups</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Azure Storage Account Name</label>
-                                                        <input type="text" class="form-control" id="backup-storage-account" placeholder="mystorageaccount">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Container Name</label>
-                                                        <input type="text" class="form-control" id="backup-container-name" placeholder="database-backups">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">SAS Token</label>
-                                                        <textarea class="form-control" id="backup-sas-token" rows="3" placeholder="sv=2022-11-02&ss=b&srt=co&sp=rwdlacupyx&se=..."></textarea>
-                                                        <small class="text-muted">Include the full SAS token with all parameters</small>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Backup Frequency</label>
-                                                        <select class="form-select" id="backup-frequency">
-                                                            <option value="daily">Daily</option>
-                                                            <option value="weekly">Weekly</option>
-                                                            <option value="monthly">Monthly</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Backup Hour (24h format)</label>
-                                                        <select class="form-select" id="backup-hour">
-                                                            <option value="0">00:00 (Midnight)</option>
-                                                            <option value="1">01:00</option>
-                                                            <option value="2" selected>02:00</option>
-                                                            <option value="3">03:00</option>
-                                                            <option value="4">04:00</option>
-                                                            <option value="5">05:00</option>
-                                                            <option value="6">06:00</option>
-                                                            <option value="7">07:00</option>
-                                                            <option value="8">08:00</option>
-                                                            <option value="9">09:00</option>
-                                                            <option value="10">10:00</option>
-                                                            <option value="11">11:00</option>
-                                                            <option value="12">12:00 (Noon)</option>
-                                                            <option value="13">13:00</option>
-                                                            <option value="14">14:00</option>
-                                                            <option value="15">15:00</option>
-                                                            <option value="16">16:00</option>
-                                                            <option value="17">17:00</option>
-                                                            <option value="18">18:00</option>
-                                                            <option value="19">19:00</option>
-                                                            <option value="20">20:00</option>
-                                                            <option value="21">21:00</option>
-                                                            <option value="22">22:00</option>
-                                                            <option value="23">23:00</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Keep Backups (days)</label>
-                                                        <input type="number" class="form-control" id="backup-keep-backups" value="30" min="1" max="365">
-                                                        <small class="text-muted">Number of days to retain backups</small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">Save Backup Settings</button>
-                                        </form>
-                                        
-                                        <!-- Backup Status -->
-                                        <div class="row mt-4">
-                                            <div class="col-md-6">
-                                                <div class="card">
-                                                    <div class="card-header">
-                                                        <h6>Backup Status</h6>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <p class="mb-2"><strong>Last Backup:</strong> <span id="backup-last-time">Never</span></p>
-                                                        <p class="mb-2"><strong>Status:</strong> <span id="backup-last-status" class="badge bg-secondary">Not configured</span></p>
-                                                        <p class="mb-2"><strong>Size:</strong> <span id="backup-last-size">-</span></p>
-                                                        <p class="mb-0"><strong>Error:</strong> <span id="backup-last-error" class="text-danger">-</span></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="card">
-                                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                                        <h6>Recent Backups</h6>
-                                                        <button class="btn btn-sm btn-outline-primary" id="refresh-backup-list-btn">Load</button>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <div id="backup-list" style="max-height: 200px; overflow-y: auto;">
-                                                            <p class="text-muted">Click refresh to load backup list</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <!-- Database Backup Settings - Web Component -->
+                            <div class="col-xl-6 col-lg-12 mb-3">
+                                <backup-manager></backup-manager>
+                            </div>
+                            
+                            <!-- Timezone & Email Configuration -->
+                            <div class="col-xl-6 col-lg-12">
+                                <!-- Timezone Configuration - Web Component -->
+                                <div class="mb-3">
+                                    <timezone-manager></timezone-manager>
+                                </div>
+                                
+                                <!-- Email Configuration - Web Component -->
+                                <div class="mb-3">
+                                    <email-manager></email-manager>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Timezone Configuration -->
+                        <!-- System Status and Actions Row -->
                         <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5>Timezone Configuration</h5>
-                                        <button class="btn btn-primary btn-sm" id="refresh-timezone-settings-btn">Refresh</button>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="timezone-settings-form">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Current System Timezone</label>
-                                                        <input type="text" class="form-control" id="current-timezone" readonly>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Available Timezones</label>
-                                                        <select class="form-select" id="available-timezones">
-                                                            <option value="">Loading...</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary" id="save-timezone-settings">Save Timezone Settings</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Email Configuration -->
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5>Email Configuration</h5>
-                                        <div>
-                                            <button class="btn btn-success btn-sm me-2" id="test-email-btn">Test Email</button>
-                                            <button class="btn btn-info btn-sm" id="refresh-email-settings-btn">Refresh</button>
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="email-settings-form">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">SendGrid API Key</label>
-                                                        <input type="password" class="form-control" id="sendgrid-api-key" placeholder="SG.xxx">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">From Email</label>
-                                                        <input type="email" class="form-control" id="from-email" placeholder="noreply@example.com">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">From Name</label>
-                                                        <input type="text" class="form-control" id="from-name" placeholder="Parking Booking System">
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <div class="form-check form-switch">
-                                                            <input class="form-check-input" type="checkbox" id="booking-confirmation-enabled">
-                                                            <label class="form-check-label">Enable Booking Confirmations</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <div class="form-check form-switch">
-                                                            <input class="form-check-input" type="checkbox" id="reports-enabled">
-                                                            <label class="form-check-label">Enable Reports</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Report Recipients (comma-separated emails)</label>
-                                                        <textarea class="form-control" id="report-recipients" rows="2" placeholder="admin@example.com, manager@example.com"></textarea>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">Save Email Settings</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mt-3">
-                            <div class="col-md-6">
-                                <div class="card">
+                            <div class="col-lg-6 mb-3">
+                                <div class="card h-100">
                                     <div class="card-header">
                                         <h5>System Status</h5>
                                     </div>
@@ -1647,8 +1464,8 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="card">
+                            <div class="col-lg-6 mb-3">
+                                <div class="card h-100">
                                     <div class="card-header">
                                         <h5>Quick Actions</h5>
                                     </div>
@@ -1660,6 +1477,8 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- System Information Row -->
                         <div class="row mt-3">
                             <div class="col-12">
                                 <div class="card">

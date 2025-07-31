@@ -66,10 +66,18 @@ const AdminTimezone = {
     // Initialize timezone settings module
     init() {
         const saveButton = document.getElementById('save-timezone-settings');
-        if (saveButton) {
+        if (saveButton && !saveButton.hasAttribute('data-timezone-listener')) {
             saveButton.addEventListener('click', this.saveTimezoneSettings.bind(this));
+            saveButton.setAttribute('data-timezone-listener', 'true');
         }
         console.log('Timezone settings module initialized');
+    },
+
+    // Ensure initialization - called when tab is activated
+    ensureInitialized() {
+        // Re-initialize if needed
+        this.init();
+        console.log('Timezone settings module ensured initialized');
     }
 };
 
