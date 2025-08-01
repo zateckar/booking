@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from . import oidc_claims, parking_lots, parking_spaces, users, email_settings, timezone_settings, logs, backup_settings, dynamic_reports, styling_settings, migrations, bookings
+from . import oidc_claims, parking_lots, parking_spaces, users, email_settings, timezone_settings, logs, backup_settings, dynamic_reports, styling_settings, migrations, bookings, backup_api, email_api
 
 router = APIRouter(tags=["admin"])
 
