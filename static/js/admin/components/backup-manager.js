@@ -26,80 +26,84 @@ class BackupManager extends HTMLElement {
                 <div class="card-header">
                     <h5 class="card-title">🗄️ Database Backup - Azure Blob Storage</h5>
                     <div>
-                        <button class="btn btn-success btn-sm" id="test-connection-btn">Test Connection</button>
-                        <button class="btn btn-warning btn-sm" id="backup-now-btn">Backup Now</button>
-                        <button class="btn btn-info btn-sm" id="refresh-btn">Refresh</button>
+                        <button class="btn btn-success" id="test-connection-btn">Test</button>
+                        <button class="btn btn-warning" id="backup-now-btn">Backup Now</button>
+                        <button class="btn btn-info" id="refresh-btn">Refresh</button>
                     </div>
                 </div>
                 <div class="card-body">
                     <form id="backup-form">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label class="form-label">
+                        <div class="form-grid">
+                            <div class="form-section">
+                                <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="backup-enabled">
-                                    Enable Backup
-                                </label>
-                                <label class="form-label">Storage Account</label>
-                                <input type="text" class="form-control" id="storage-account" placeholder="mystorageaccount">
-                                
-                                <label class="form-label">Container Name</label>
-                                <input type="text" class="form-control" id="container-name" placeholder="backups">
-                                
-                                <label class="form-label">SAS Token</label>
-                                <input type="password" class="form-control" id="sas-token" placeholder="?sv=...">
+                                    <label class="form-check-label" for="backup-enabled">Enable Backup</label>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="storage-account">Storage Account</label>
+                                    <input type="text" class="form-control" id="storage-account" placeholder="mystorageaccount">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="container-name">Container Name</label>
+                                    <input type="text" class="form-control" id="container-name" placeholder="backups">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="sas-token">SAS Token</label>
+                                    <input type="password" class="form-control" id="sas-token" placeholder="?sv=...">
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Backup Frequency</label>
-                                <select class="form-select" id="backup-frequency">
-                                    <option value="daily">Daily</option>
-                                    <option value="weekly">Weekly</option>
-                                    <option value="monthly">Monthly</option>
-                                </select>
-                                
-                                <label class="form-label">Backup Hour (24h format)</label>
-                                <select class="form-select" id="backup-hour">
-                                    ${Array.from({length: 24}, (_, i) => `<option value="${i}">${i.toString().padStart(2, '0')}:00</option>`).join('')}
-                                </select>
-                                
-                                <label class="form-label">Keep Backups (days)</label>
-                                <input type="number" class="form-control" id="keep-backups" value="30" min="1" max="365">
+                            <div class="form-section">
+                                <div>
+                                    <label class="form-label" for="backup-frequency">Backup Frequency</label>
+                                    <select class="form-select" id="backup-frequency">
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="backup-hour">Backup Hour (24h format)</label>
+                                    <select class="form-select" id="backup-hour">
+                                        ${Array.from({length: 24}, (_, i) => `<option value="${i}">${i.toString().padStart(2, '0')}:00</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="keep-backups">Keep Backups (days)</label>
+                                    <input type="number" class="form-control" id="keep-backups" value="30" min="1" max="365">
+                                </div>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Save Backup Settings</button>
-                        <div id="message"></div>
+                        <button type="submit" class="btn btn-primary mt-3">Save Settings</button>
+                        <div id="message" class="mt-3"></div>
                     </form>
                     
-                    <div class="row mt-3">
-                        <div class="col-lg-6">
-                            <div class="status-section">
-                                <h6>Backup Status</h6>
-                                <div class="status-item">
-                                    <span class="status-label">Last Backup:</span>
-                                    <span class="status-value" id="last-backup-time">Never</span>
-                                </div>
-                                <div class="status-item">
-                                    <span class="status-label">Status:</span>
-                                    <span id="last-backup-status" class="badge bg-secondary">Not configured</span>
-                                </div>
-                                <div class="status-item">
-                                    <span class="status-label">Size:</span>
-                                    <span class="status-value" id="last-backup-size">-</span>
-                                </div>
-                                <div class="status-item">
-                                    <span class="status-label">Error:</span>
-                                    <span class="status-value" id="last-backup-error">-</span>
-                                </div>
+                    <div class="form-grid mt-4">
+                        <div class="status-section">
+                            <h6>Backup Status</h6>
+                            <div class="status-item">
+                                <span class="status-label">Last Backup:</span>
+                                <span class="status-value" id="last-backup-time">Never</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Status:</span>
+                                <span id="last-backup-status" class="badge bg-secondary">Not configured</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Size:</span>
+                                <span class="status-value" id="last-backup-size">-</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Error:</span>
+                                <span class="status-value" id="last-backup-error">-</span>
                             </div>
                         </div>
-                        <div class="col-lg-6">
-                            <div class="backup-list-section">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6>Recent Backups</h6>
-                                    <button class="btn btn-primary btn-sm" id="load-backup-list-btn">Load</button>
-                                </div>
-                                <div id="backup-list" class="list-section">
-                                    <p class="text-muted text-center">Click Load to view backup list</p>
-                                </div>
+                        <div class="backup-list-section">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Recent Backups</h6>
+                                <button class="btn btn-primary btn-sm" id="load-backup-list-btn">Load</button>
+                            </div>
+                            <div id="backup-list" class="list-section">
+                                <p class="text-muted text-center">Click Load to view backup list</p>
                             </div>
                         </div>
                     </div>

@@ -56,9 +56,7 @@ class AdminStyling {
 
     async loadStylingSettings() {
         try {
-            const response = await fetch('/api/admin/styling-settings/', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
-            });
+            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/');
 
             if (!response.ok) {
                 throw new Error('Failed to load styling settings');
@@ -242,9 +240,8 @@ class AdminStyling {
         formData.append('file', file);
 
         try {
-            const response = await fetch('/api/admin/styling-settings/upload-logo', {
+            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/upload-logo', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
                 body: formData
             });
 
@@ -282,9 +279,8 @@ class AdminStyling {
         }
 
         try {
-            const response = await fetch('/api/admin/styling-settings/logo', {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/logo', {
+                method: 'DELETE'
             });
 
             if (!response.ok) {
@@ -578,11 +574,10 @@ ${settings.custom_css || ''}
 
             const settings = this.getFormValues();
 
-            const response = await fetch('/api/admin/styling-settings/', {
+            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/', {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(settings)
             });
@@ -656,9 +651,8 @@ ${settings.custom_css || ''}
         }
 
         try {
-            const response = await fetch('/api/admin/styling-settings/reset-to-defaults', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/reset-to-defaults', {
+                method: 'POST'
             });
 
             if (!response.ok) {

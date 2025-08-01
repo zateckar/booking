@@ -24,42 +24,44 @@ class EmailManager extends HTMLElement {
                 <div class="card-header">
                     <h5 class="card-title">📧 Email Configuration</h5>
                     <div>
-                        <button class="btn btn-success btn-sm" id="test-email-btn">Test Email</button>
-                        <button class="btn btn-info btn-sm" id="refresh-btn">Refresh</button>
+                        <button class="btn btn-success" id="test-email-btn">Test</button>
+                        <button class="btn btn-info" id="refresh-btn">Refresh</button>
                     </div>
                 </div>
                 <div class="card-body">
                     <form id="email-form">
-                        <div class="row">
-                            <div class="col-lg-4">
-                                <label class="form-label">SendGrid API Key</label>
-                                <input type="password" class="form-control" id="sendgrid-api-key" placeholder="SG.xxx">
-                                
-                                <label class="form-label">From Email</label>
-                                <input type="email" class="form-control" id="from-email" placeholder="noreply@example.com">
-                                
-                                <label class="form-label">From Name</label>
-                                <input type="text" class="form-control" id="from-name" placeholder="Parking Booking System">
+                        <div class="form-grid">
+                            <div class="form-section">
+                                <div>
+                                    <label class="form-label" for="sendgrid-api-key">SendGrid API Key</label>
+                                    <input type="password" class="form-control" id="sendgrid-api-key" placeholder="SG.xxx">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="from-email">From Email</label>
+                                    <input type="email" class="form-control" id="from-email" placeholder="noreply@example.com">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="from-name">From Name</label>
+                                    <input type="text" class="form-control" id="from-name" placeholder="Parking Booking System">
+                                </div>
                             </div>
-                            <div class="col-lg-4">
-                                <label class="form-label">
+                            <div class="form-section">
+                                <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="booking-confirmation-enabled">
-                                    Enable Booking Confirmations
-                                </label>
-                                
-                                <label class="form-label">
+                                    <label class="form-check-label" for="booking-confirmation-enabled">Enable Booking Confirmations</label>
+                                </div>
+                                <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="reports-enabled">
-                                    Enable Reports
-                                </label>
-                                
-                                <label class="form-label">Report Recipients</label>
-                                <textarea class="form-control" id="report-recipients" rows="3" placeholder="admin@example.com, manager@example.com"></textarea>
-                            </div>
-                            <div class="col-lg-4 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">Save Email Settings</button>
+                                    <label class="form-check-label" for="reports-enabled">Enable Reports</label>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="report-recipients">Report Recipients</label>
+                                    <textarea class="form-control" id="report-recipients" rows="3" placeholder="admin@example.com, manager@example.com"></textarea>
+                                </div>
                             </div>
                         </div>
-                        <div id="message"></div>
+                        <button type="submit" class="btn btn-primary mt-3">Save Settings</button>
+                        <div id="message" class="mt-3"></div>
                     </form>
                 </div>
             </div>

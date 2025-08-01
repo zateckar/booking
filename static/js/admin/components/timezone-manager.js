@@ -24,26 +24,26 @@ class TimezoneManager extends HTMLElement {
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title">🕐 Timezone Configuration</h5>
-                    <button class="btn btn-primary btn-sm" id="refresh-btn">Refresh</button>
+                    <button class="btn btn-info" id="refresh-btn">Refresh</button>
                 </div>
                 <div class="card-body">
                     <form id="timezone-form">
-                        <div class="row">
-                            <div class="col-lg-5">
-                                <label class="form-label">Current System Timezone</label>
-                                <input type="text" class="form-control" id="current-timezone" readonly>
-                            </div>
-                            <div class="col-lg-5">
-                                <label class="form-label">Available Timezones</label>
-                                <select class="form-select" id="available-timezones">
-                                    <option value="">Loading...</option>
-                                </select>
-                            </div>
-                            <div class="col-lg-2 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">Save</button>
+                        <div class="form-grid">
+                            <div class="form-section">
+                                <div>
+                                    <label class="form-label" for="current-timezone">Current System Timezone</label>
+                                    <input type="text" class="form-control" id="current-timezone" readonly>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="available-timezones">Available Timezones</label>
+                                    <select class="form-select" id="available-timezones">
+                                        <option value="">Loading...</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        <div id="message"></div>
+                        <button type="submit" class="btn btn-primary mt-3">Save</button>
+                        <div id="message" class="mt-3"></div>
                     </form>
                 </div>
             </div>
