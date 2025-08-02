@@ -13,6 +13,7 @@ class BackupManager extends HTMLElement {
         console.log('🔧 BackupManager connected to DOM');
         this.render();
         this.setupEventListeners();
+        this.waitForAuthAndLoad();
         this.loadBackupData();
     }
 
@@ -474,7 +475,8 @@ class BackupManager extends HTMLElement {
     // API methods
     async fetchBackupSettings() {
         return fetch('/admin/api/backup/settings', {
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
+            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+            credentials: 'include'
         });
     }
 
@@ -485,6 +487,7 @@ class BackupManager extends HTMLElement {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.getAuthToken()}`
             },
+            credentials: 'include',
             body: JSON.stringify(data)
         });
     }
@@ -492,20 +495,23 @@ class BackupManager extends HTMLElement {
     async testBackupConnection() {
         return fetch('/admin/api/backup/test-connection', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
+            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+
         });
     }
 
     async startBackupNow() {
         return fetch('/admin/api/backup/backup-now', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
+            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+
         });
     }
 
     async fetchBackupList(limit = 20) {
         return fetch(`/admin/api/backup/list?limit=${limit}`, {
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
+            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+            
         });
     }
 

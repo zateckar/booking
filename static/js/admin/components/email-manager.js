@@ -12,6 +12,7 @@ class EmailManager extends HTMLElement {
         console.log('📧 EmailManager connected to DOM');
         this.render();
         this.setupEventListeners();
+        this.waitForAuthAndLoad();
         this.loadEmailData();
     }
 
@@ -374,7 +375,8 @@ class EmailManager extends HTMLElement {
     // API methods
     async fetchEmailSettings() {
         return fetch('/admin/api/email/settings', {
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
+            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+            credentials: 'include'
         });
     }
 
@@ -385,6 +387,7 @@ class EmailManager extends HTMLElement {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.getAuthToken()}`
             },
+            credentials: 'include',
             body: JSON.stringify(data)
         });
     }
@@ -392,7 +395,8 @@ class EmailManager extends HTMLElement {
     async testEmailConfig() {
         return fetch('/admin/api/email/test-config', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
+            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+            credentials: 'include'
         });
     }
 
