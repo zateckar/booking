@@ -212,6 +212,33 @@ const AdminLogs = {
         }
     },
 
+    // Cleanup old logs
+    async cleanupOldLogs() {
+        const days = await AdminNotifications.prompt('Delete logs older than how many days?', '30');
+        if (!days || isNaN(days) || days < 1) return;
+
+        const confirmed = await AdminNotifications.confirm(`Are you sure you want to delete logs older than ${days} days? This action cannot be undone.`);
+        if (!confirmed) return;
+
+        AdminNotifications.showInfo('Cleaning up old logs...');
+
+        try {
+            const response = await AdminAPI.logs.cleanup(days);
+
+            if (response.ok) {
+                const result = await response.json();
+                const message = `Cleanup completed! Deleted ${result.deleted_count} log entries older than ${new Date(result.cutoff_date).toLocaleString()}.`;
+                AdminNotifications.showSuccess(message);
+                this.loadLogs(); // Refresh logs view
+            } else {
+                const error = await response.json();
+                AdminNotifications.showError(`Failed to cleanup logs: ${error.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            AdminNotifications.handleApiError(error, 'Error during log cleanup');
+        }
+    },
+
     // Initialize logs module
     init() {
         // Setup filter event listeners
@@ -222,6 +249,16 @@ const AdminLogs = {
                 element.addEventListener('change', this.loadLogs.bind(this));
             }
         });
+
+        const refreshBtn = document.getElementById('refresh-logs-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', this.loadLogs.bind(this));
+        }
+
+        const cleanupBtn = document.getElementById('cleanup-old-logs-btn');
+        if (cleanupBtn) {
+            cleanupBtn.addEventListener('click', this.cleanupOldLogs.bind(this));
+        }
 
         // Setup log configuration event listeners
         const backendSelect = document.getElementById('backend-log-level');

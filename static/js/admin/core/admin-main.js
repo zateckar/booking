@@ -204,6 +204,11 @@ function setupAdminEventListeners() {
             if (backupManager) console.log('🔧 backup-manager element found');
             if (timezoneManager) console.log('🕐 timezone-manager element found');
             if (emailManager) console.log('📧 email-manager element found');
+
+            // Ensure AdminBackup module's event listeners are attached
+            if (window.AdminBackup && typeof window.AdminBackup.ensureInitialized === 'function') {
+                window.AdminBackup.ensureInitialized();
+            }
         }}
     ];
 
@@ -402,10 +407,9 @@ function setupAdminEventListeners() {
             'logs': 'logs-pane',
             'dynamic-reports': 'dynamic-reports-pane',
             'styling': 'branding-pane',
-            'backup-system': 'system-pane'
         };
         
-        const paneId = tabMapping[moduleName];
+        const paneId = tabMapping[moduleName] || 'system-pane';
         return paneId ? document.getElementById(paneId) : null;
     };
 

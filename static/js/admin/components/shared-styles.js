@@ -1,155 +1,84 @@
+/**
+ * Shared Styles for Admin Components
+ * 
+ * Since we're now using pure Bootstrap components without shadow DOM,
+ * this file contains minimal shared utilities and constants.
+ */
 const AdminSharedStyles = {
-    getSharedStyles: () => `
-        <style>
-            :host {
-                display: block;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                --primary-color: #007bff;
-                --primary-hover-color: #0056b3;
-                --secondary-color: #6c757d;
-                --success-color: #28a745;
-                --danger-color: #dc3545;
-                --warning-color: #ffc107;
-                --info-color: #17a2b8;
-                --light-gray-color: #f8f9fa;
-                --medium-gray-color: #dee2e6;
-                --dark-gray-color: #343a40;
-                --font-color: #212529;
-                --card-bg: #ffffff;
-                --card-border-color: #e3e6f0;
-                --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-                --border-radius: 0.35rem;
-            }
+    // Color constants for consistency
+    colors: {
+        primary: '#007bff',
+        secondary: '#6c757d',
+        success: '#28a745',
+        danger: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8',
+        light: '#f8f9fa',
+        dark: '#343a40'
+    },
 
-            .card {
-                background-color: var(--card-bg);
-                border: 1px solid var(--card-border-color);
-                border-radius: var(--border-radius);
-                box-shadow: var(--card-shadow);
-                margin-bottom: 1.5rem;
-                height: 100%;
-            }
+    // Common CSS classes that might be needed
+    getUtilityClasses: () => ({
+        loadingOverlay: 'position-absolute top-0 start-0 w-100 h-100 d-none',
+        loadingOverlayBg: 'background: rgba(255,255,255,0.8); z-index: 10;',
+        centeredSpinner: 'd-flex justify-content-center align-items-center h-100'
+    }),
 
-            .card-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 0.75rem 1.25rem;
-                background-color: var(--light-gray-color);
-                border-bottom: 1px solid var(--card-border-color);
-            }
+    // Legacy method for backward compatibility (returns empty since we don't use shadow DOM anymore)
+    getSharedStyles: () => '',
 
-            .card-title {
-                margin: 0;
-                font-size: 1.2rem;
-                font-weight: 500;
-                color: var(--font-color);
-            }
+    // Utility method to create consistent loading overlays
+    createLoadingOverlay: (spinnerColor = 'primary') => `
+        <div class="position-absolute top-0 start-0 w-100 h-100 d-none" 
+             style="background: rgba(255,255,255,0.8); z-index: 10;">
+            <div class="d-flex justify-content-center align-items-center h-100">
+                <div class="spinner-border text-${spinnerColor}" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    `,
 
-            .card-body {
-                padding: 1.5rem;
-            }
+    // Utility method to create consistent alert messages
+    createAlert: (message, type = 'info', dismissible = true) => {
+        const dismissibleClass = dismissible ? 'alert-dismissible' : '';
+        const dismissButton = dismissible ? 
+            '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' : '';
+        
+        return `
+            <div class="alert alert-${type} ${dismissibleClass} fade show" role="alert">
+                ${message}
+                ${dismissButton}
+            </div>
+        `;
+    },
 
-            .form-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 1.5rem;
-            }
+    // Utility method for consistent card headers
+    createCardHeader: (title, icon, headerColor = 'primary', actions = '') => `
+        <div class="card-header bg-${headerColor} text-white d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="${icon} me-2"></i>${title}
+            </h5>
+            ${actions}
+        </div>
+    `,
 
-            .form-section {
-                display: flex;
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .form-label {
-                font-weight: 500;
-                margin-bottom: 0.5rem;
-            }
-
-            .form-control, .form-select {
-                width: 100%;
-                padding: 0.75rem;
-                border: 1px solid var(--medium-gray-color);
-                border-radius: var(--border-radius);
-                font-size: 1rem;
-                transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-            }
-
-            .form-control:focus, .form-select:focus {
-                border-color: var(--primary-color);
-                box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-                outline: none;
-            }
-            
-            .form-check {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-            }
-
-            .btn {
-                padding: 0.5rem 1rem;
-                border: none;
-                border-radius: var(--border-radius);
-                cursor: pointer;
-                font-size: 0.9rem;
-                font-weight: 500;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                transition: background-color 0.2s;
-            }
-
-            .btn-primary {
-                background-color: var(--primary-color);
-                color: white;
-            }
-            .btn-primary:hover {
-                background-color: var(--primary-hover-color);
-            }
-
-            .btn-success {
-                background-color: var(--success-color);
-                color: white;
-            }
-
-            .btn-warning {
-                background-color: var(--warning-color);
-                color: var(--dark-gray-color);
-            }
-
-            .btn-info {
-                background-color: var(--info-color);
-                color: white;
-            }
-
-            .status-section, .backup-list-section {
-                margin-top: 1.5rem;
-                padding: 1rem;
-                background-color: var(--light-gray-color);
-                border-radius: var(--border-radius);
-            }
-
-            .status-item {
-                display: flex;
-                justify-content: space-between;
-                padding: 0.5rem 0;
-                border-bottom: 1px solid var(--medium-gray-color);
-            }
-            .status-item:last-child {
-                border-bottom: none;
-            }
-
-            .list-item {
-                padding: 0.75rem;
-                background-color: white;
-                border: 1px solid var(--medium-gray-color);
-                border-radius: var(--border-radius);
-                margin-bottom: 0.5rem;
-            }
-        </style>
-    `
+    // Common button group patterns
+    getActionButtonGroup: (buttons = []) => {
+        const buttonHtml = buttons.map(btn => 
+            `<button class="btn ${btn.class} btn-sm" id="${btn.id}" title="${btn.title || ''}">
+                <i class="${btn.icon} me-1"></i>${btn.text}
+             </button>`
+        ).join('');
+        
+        return `<div class="btn-group" role="group">${buttonHtml}</div>`;
+    }
 };
 
-// Make it globally available
+// Make it globally available for backward compatibility
 window.AdminSharedStyles = AdminSharedStyles;
+
+// Export for modern usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = AdminSharedStyles;
+}

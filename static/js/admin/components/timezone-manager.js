@@ -1,11 +1,10 @@
 /**
- * Timezone Manager Web Component
- * Encapsulates all timezone-related functionality
+ * Timezone Manager Web Component - Bootstrap UI
+ * Modern, clean interface for timezone configuration
  */
 class TimezoneManager extends HTMLElement {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
         this.currentTimezone = null;
         this.availableTimezones = [];
     }
@@ -18,44 +17,81 @@ class TimezoneManager extends HTMLElement {
     }
 
     render() {
-        this.shadowRoot.innerHTML = `
-            ${window.AdminSharedStyles?.getSharedStyles() || ''}
-            
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title">🕐 Timezone Configuration</h5>
-                    <button class="btn btn-info" id="refresh-btn">Refresh</button>
+        this.innerHTML = `
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>Timezone Settings
+                    </h5>
+                    <button class="btn btn-light btn-sm" id="refresh-btn" title="Refresh">
+                        Refresh
+                    </button>
                 </div>
+                
                 <div class="card-body">
+                    <!-- Current Timezone Display -->
+                    <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <div>
+                            <strong>Current Timezone:</strong> 
+                            <span id="current-timezone-display">Loading...</span>
+                        </div>
+                    </div>
+
+                    <!-- Timezone Selection Form -->
                     <form id="timezone-form">
-                        <div class="form-grid">
-                            <div class="form-section">
-                                <div>
-                                    <label class="form-label" for="current-timezone">Current System Timezone</label>
-                                    <input type="text" class="form-control" id="current-timezone" readonly>
-                                </div>
-                                <div>
-                                    <label class="form-label" for="available-timezones">Available Timezones</label>
-                                    <select class="form-select" id="available-timezones">
-                                        <option value="">Loading...</option>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="timezone-select" class="form-label">
+                                        <i class="fas fa-globe me-1"></i>Select New Timezone
+                                    </label>
+                                    <select class="form-select form-select-sm" id="timezone-select" required>
+                                        <option value="">Choose a timezone...</option>
                                     </select>
+                                    <div class="form-text">
+                                        This will affect all time displays and scheduling in the system.
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary mt-3">Save</button>
-                        <div id="message" class="mt-3"></div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-success btn-sm" disabled>
+                                <i class="fas fa-save me-2"></i>Save Timezone
+                            </button>
+                        </div>
                     </form>
+
+                    <!-- Status Messages -->
+                    <div id="message-container" class="mt-3"></div>
+                </div>
+
+                <!-- Loading Overlay -->
+                <div id="loading-overlay" class="position-absolute top-0 start-0 w-100 h-100 d-none" 
+                     style="background: rgba(255,255,255,0.8); z-index: 10;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
     }
 
     setupEventListeners() {
-        const form = this.shadowRoot.getElementById('timezone-form');
-        const refreshBtn = this.shadowRoot.getElementById('refresh-btn');
+        const form = this.querySelector('#timezone-form');
+        const refreshBtn = this.querySelector('#refresh-btn');
+        const timezoneSelect = this.querySelector('#timezone-select');
+        const submitBtn = this.querySelector('button[type="submit"]');
 
         form.addEventListener('submit', this.handleSubmit.bind(this));
         refreshBtn.addEventListener('click', this.loadTimezoneData.bind(this));
+        
+        timezoneSelect.addEventListener('change', () => {
+            submitBtn.disabled = !timezoneSelect.value || timezoneSelect.value === this.currentTimezone;
+        });
     }
 
     async loadTimezoneData() {
@@ -83,38 +119,41 @@ class TimezoneManager extends HTMLElement {
                 throw new Error('Failed to load timezone data');
             }
         } catch (error) {
-            this.showError(`Error loading timezone settings: ${error.message}`);
+            this.showMessage(`Error loading timezone settings: ${error.message}`, 'danger');
         } finally {
             this.setLoading(false);
         }
     }
 
     updateUI() {
-        const currentInput = this.shadowRoot.getElementById('current-timezone');
-        const select = this.shadowRoot.getElementById('available-timezones');
+        const currentDisplay = this.querySelector('#current-timezone-display');
+        const timezoneSelect = this.querySelector('#timezone-select');
+        const submitBtn = this.querySelector('button[type="submit"]');
 
-        currentInput.value = this.currentTimezone || 'Not set';
+        // Update current timezone display
+        currentDisplay.textContent = this.currentTimezone || 'Not configured';
 
-        select.innerHTML = '<option value="">Select Timezone</option>';
+        // Populate timezone select
+        timezoneSelect.innerHTML = '<option value="">Choose a timezone...</option>';
         this.availableTimezones.forEach(tz => {
             const option = document.createElement('option');
             option.value = tz.value;
             option.textContent = tz.label;
-            if (tz.value === this.currentTimezone) {
-                option.selected = true;
-            }
-            select.appendChild(option);
+            timezoneSelect.appendChild(option);
         });
+
+        // Reset button state
+        submitBtn.disabled = true;
     }
 
     async handleSubmit(event) {
         event.preventDefault();
 
-        const select = this.shadowRoot.getElementById('available-timezones');
-        const newTimezone = select.value;
+        const timezoneSelect = this.querySelector('#timezone-select');
+        const newTimezone = timezoneSelect.value;
 
-        if (!newTimezone) {
-            this.showError('Please select a timezone.');
+        if (!newTimezone || newTimezone === this.currentTimezone) {
+            this.showMessage('Please select a different timezone.', 'warning');
             return;
         }
 
@@ -127,17 +166,17 @@ class TimezoneManager extends HTMLElement {
             if (response.ok) {
                 this.currentTimezone = newTimezone;
                 this.updateUI();
-                this.showSuccess('Timezone settings updated successfully.');
+                this.showMessage('Timezone updated successfully!', 'success');
 
                 this.dispatchEvent(new CustomEvent('timezone-changed', {
                     detail: { timezone: newTimezone }
                 }));
             } else {
                 const error = await response.json();
-                throw new Error(error.detail || 'Failed to update timezone settings');
+                throw new Error(error.detail || 'Failed to update timezone');
             }
         } catch (error) {
-            this.showError(`Error updating timezone: ${error.message}`);
+            this.showMessage(`Error updating timezone: ${error.message}`, 'danger');
         } finally {
             this.setLoading(false);
         }
@@ -146,9 +185,6 @@ class TimezoneManager extends HTMLElement {
     // API methods
     async fetchTimezoneSettings() {
         const token = this.getAuthToken();
-        console.log('🕐 TimezoneManager: Using token for settings:', token ? 'Token present' : 'No token');
-        
-        // Use the global auth function if available, otherwise fallback to direct fetch
         if (window.auth && window.auth.makeAuthenticatedRequest) {
             return window.auth.makeAuthenticatedRequest('/admin/api/timezone/settings');
         }
@@ -161,9 +197,6 @@ class TimezoneManager extends HTMLElement {
 
     async fetchAvailableTimezones() {
         const token = this.getAuthToken();
-        console.log('🕐 TimezoneManager: Using token for timezones:', token ? 'Token present' : 'No token');
-        
-        // Use the global auth function if available, otherwise fallback to direct fetch
         if (window.auth && window.auth.makeAuthenticatedRequest) {
             return window.auth.makeAuthenticatedRequest('/admin/api/timezone/timezones');
         }
@@ -175,13 +208,10 @@ class TimezoneManager extends HTMLElement {
     }
 
     async updateTimezoneSettings(data) {
-        // Use the global auth function if available, otherwise fallback to direct fetch
         if (window.auth && window.auth.makeAuthenticatedRequest) {
             return window.auth.makeAuthenticatedRequest('/admin/api/timezone/settings', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
         }
@@ -203,27 +233,30 @@ class TimezoneManager extends HTMLElement {
     }
 
     setLoading(loading) {
-        const card = this.shadowRoot.querySelector('.card');
-        if (loading) {
-            card.classList.add('loading');
-        } else {
-            card.classList.remove('loading');
+        const overlay = this.querySelector('#loading-overlay');
+        overlay.classList.toggle('d-none', !loading);
+    }
+
+    showMessage(message, type = 'info') {
+        const container = this.querySelector('#message-container');
+        const alertClass = `alert alert-${type} alert-dismissible fade show`;
+        
+        container.innerHTML = `
+            <div class="${alertClass}" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+
+        // Auto-hide success messages after 5 seconds
+        if (type === 'success') {
+            setTimeout(() => this.clearMessage(), 5000);
         }
     }
 
-    showError(message) {
-        const messageDiv = this.shadowRoot.getElementById('message');
-        messageDiv.innerHTML = `<div class="error">${message}</div>`;
-    }
-
-    showSuccess(message) {
-        const messageDiv = this.shadowRoot.getElementById('message');
-        messageDiv.innerHTML = `<div class="success">${message}</div>`;
-    }
-
     clearMessage() {
-        const messageDiv = this.shadowRoot.getElementById('message');
-        messageDiv.innerHTML = '';
+        const container = this.querySelector('#message-container');
+        container.innerHTML = '';
     }
 
     // Public API
