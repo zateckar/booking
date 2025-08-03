@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Union
 from pydantic import BaseModel
@@ -17,6 +17,7 @@ class TimezoneUpdateRequest(BaseModel):
 
 @router.get("/timezones")
 def get_available_timezones(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -29,6 +30,7 @@ def get_available_timezones(
 
 @router.get("/current")
 def get_current_timezone(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -44,6 +46,7 @@ def get_current_timezone(
 
 @router.put("/update")
 def update_timezone(
+    req: Request,
     request: TimezoneUpdateRequest,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)

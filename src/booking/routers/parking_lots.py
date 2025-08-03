@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
 from sqlalchemy.orm import Session
 import shutil
 import os
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api", tags=["parking-lots"])
 
 @router.get("/parking-lots/", response_model=list[schemas.ParkingLot])
 def read_parking_lots(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -26,6 +27,7 @@ def read_parking_lots(
 
 @router.get("/parking-lots/{lot_id}", response_model=schemas.ParkingLot)
 def read_parking_lot(
+    request: Request,
     lot_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
@@ -38,6 +40,7 @@ def read_parking_lot(
 
 @router.get("/parking-lots/{lot_id}/spaces/", response_model=list[schemas.ParkingSpace])
 def read_parking_spaces_for_lot(
+    request: Request,
     lot_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -51,6 +54,7 @@ def read_parking_spaces_for_lot(
     response_model=schemas.AvailabilityResponse,
 )
 def get_parking_space_availability(
+    request: Request,
     lot_id: int,
     start_time: datetime,
     end_time: datetime,

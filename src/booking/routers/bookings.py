@@ -2,7 +2,7 @@ from datetime import date
 from typing import Optional
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas
@@ -19,6 +19,7 @@ router = APIRouter()
 
 @router.post("/api/bookings/", response_model=schemas.BookingRead)
 def create_booking(
+    request: Request,
     booking: schemas.BookingCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -82,6 +83,7 @@ def create_booking(
 
 @router.get("/api/bookings/", response_model=list[schemas.BookingRead])
 def read_bookings(
+    request: Request,
     db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)
 ):
     logger.debug(f"Fetching bookings for user {current_user.email}")
@@ -97,6 +99,7 @@ def read_bookings(
 
 @router.get("/api/bookings/all", response_model=list[schemas.BookingRead])
 def read_all_bookings(
+    request: Request,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
@@ -123,6 +126,7 @@ def read_all_bookings(
 
 @router.put("/api/bookings/{booking_id}", response_model=schemas.BookingRead)
 def update_booking(
+    request: Request,
     booking_id: int,
     booking_update: schemas.BookingUpdate,
     db: Session = Depends(get_db),
@@ -176,6 +180,7 @@ def update_booking(
 
 @router.put("/api/bookings/{booking_id}/cancel", response_model=schemas.Booking)
 def cancel_booking(
+    request: Request,
     booking_id: int, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -203,6 +208,7 @@ def cancel_booking(
 
 @router.get("/api/bookings/suggestions")
 def get_booking_suggestions(
+    request: Request,
     space_id: int,
     start_time: str,  # ISO format datetime string
     duration_minutes: int = 60,
@@ -245,6 +251,7 @@ def get_booking_suggestions(
 
 @router.get("/api/bookings/timezone")
 def get_booking_timezone(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -258,6 +265,7 @@ def get_booking_timezone(
 
 @router.get("/api/bookings/active-spaces")
 def get_active_spaces_with_license_plates(
+    request: Request,
     reference_time: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),

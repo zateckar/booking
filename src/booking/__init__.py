@@ -29,8 +29,6 @@ app = FastAPI()
 # Add session middleware for OIDC authentication
 import os
 session_secret = os.getenv("SESSION_SECRET_KEY", "your-secret-key-change-in-production")
-if session_secret == "your-secret-key-change-in-production":
-    logger.warning("Using default session secret key. Set SESSION_SECRET_KEY environment variable for production.")
 
 app.add_middleware(
     SessionMiddleware,

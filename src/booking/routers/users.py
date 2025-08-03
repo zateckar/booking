@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 import logging
@@ -40,6 +40,7 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 @router.get("/api/users/me", response_model=schemas.User)
 def read_users_me(
+    request: Request,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
     include_parking_lots: bool = False,
@@ -50,7 +51,7 @@ def read_users_me(
 
 
 @router.get("/api/users/me/license-plates", response_model=list[str])
-def read_user_license_plates(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+def read_user_license_plates(request: Request, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     license_plates = (
         db.query(models.Booking.license_plate)
         .filter(models.Booking.user_id == current_user.id)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 import json
@@ -16,6 +16,7 @@ router = APIRouter()
 
 @router.get("/email-settings", response_model=schemas.EmailSettings)
 def get_email_settings(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -57,6 +58,7 @@ def get_email_settings(
 
 @router.put("/email-settings", response_model=schemas.EmailSettings)
 def update_email_settings(
+    request: Request,
     settings_update: schemas.EmailSettingsUpdate,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
@@ -137,6 +139,7 @@ def update_email_settings(
 
 @router.post("/email-settings/test")
 def test_email_configuration(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -152,6 +155,7 @@ def test_email_configuration(
 
 @router.post("/email-settings/send-report")
 def send_report_now(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):

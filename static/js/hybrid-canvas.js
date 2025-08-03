@@ -23,24 +23,24 @@ class HybridCanvasManager {
         this.container = container;
         this.isAdmin = isAdmin;
         
-        console.log('Initializing hybrid canvas manager...');
+        AdminLogs.log('INFO', 'Initializing hybrid canvas manager...');
         
         // Try to initialize WebGPU
         if (WebGPURenderer.isSupported()) {
             try {
                 await this.initWebGPU();
                 if (this.useWebGPU) {
-                    console.log('✅ Using WebGPU for high-performance rendering');
+                    AdminLogs.log('INFO', '✅ Using WebGPU for high-performance rendering');
                     this.setupHybridMode();
                 } else {
-                    console.log('⚠️ WebGPU initialization failed, using Fabric.js only');
+                    AdminLogs.log('WARNING', '⚠️ WebGPU initialization failed, using Fabric.js only');
                 }
             } catch (error) {
-                console.error('WebGPU initialization error:', error);
-                console.log('📱 Falling back to Fabric.js rendering');
+                AdminLogs.log('ERROR', 'WebGPU initialization error:', error);
+                AdminLogs.log('INFO', '📱 Falling back to Fabric.js rendering');
             }
         } else {
-            console.log('📱 WebGPU not supported, using Fabric.js rendering');
+            AdminLogs.log('INFO', '📱 WebGPU not supported, using Fabric.js rendering');
         }
         
         return this.useWebGPU;
@@ -444,4 +444,4 @@ class HybridCanvasManager {
 // Export for global access
 window.HybridCanvasManager = HybridCanvasManager;
 
-console.log('Hybrid Canvas Manager loaded');
+AdminLogs.log('INFO', 'Hybrid Canvas Manager loaded');

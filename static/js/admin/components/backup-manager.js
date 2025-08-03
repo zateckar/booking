@@ -5,22 +5,34 @@
 class BackupManager extends HTMLElement {
     constructor() {
         super();
-        this.backupSettings = {};
-        this.backupList = [];
+        AdminLogs.log('DEBUG', '🔧 BackupManager constructor');
+        this.settings = {};
+        this.backups = [];
     }
 
     connectedCallback() {
-        console.log('🔧 BackupManager connected to DOM');
+        AdminLogs.log('DEBUG', '🔧 BackupManager connected to DOM');
         this.render();
-        this.setupEventListeners();
-        this.waitForAuthAndLoad();
         this.loadBackupData();
+        this.setupEventListeners();
     }
 
     render() {
         this.innerHTML = `
+            <style>
+                .card-header {
+                    background-color: var(--bs-warning);
+                    color: var(--bs-dark);
+                }
+                .btn-success {
+                    background-color: var(--bs-success);
+                }
+                .btn-primary {
+                    background-color: var(--bs-primary);
+                }
+            </style>
             <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">
                         <i class="fas fa-database me-2"></i>Database Backup Management
                     </h5>

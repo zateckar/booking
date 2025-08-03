@@ -15,10 +15,10 @@ const AdminDashboard = {
 
     // Initialize dashboard
     async init() {
-        console.log('Dashboard module initializing...');
+        AdminLogs.log('INFO', 'Dashboard module initializing...');
         this.setupEventListeners();
         await this.loadDashboardData();
-        console.log('Dashboard module initialized');
+        AdminLogs.log('INFO', 'Dashboard module initialized');
     },
 
     // Setup event listeners
@@ -103,7 +103,7 @@ const AdminDashboard = {
             }
 
         } catch (error) {
-            console.error('Error loading dashboard data:', error);
+            AdminLogs.log('ERROR', 'Error loading dashboard data:', error);
             AdminNotifications.showError('Failed to load dashboard data');
             if (showLoading) {
                 this.hideLoadingState();
@@ -239,7 +239,7 @@ const AdminDashboard = {
             }
 
         } catch (error) {
-            console.error('Error loading system status:', error);
+            AdminLogs.log('ERROR', 'Error loading system status:', error);
         }
     },
 
@@ -576,7 +576,7 @@ const AdminDashboard = {
         if (this.refreshTimer) {
             clearInterval(this.refreshTimer);
             this.refreshTimer = null;
-            console.log('Dashboard auto-refresh timer stopped');
+            AdminLogs.log('INFO', 'Dashboard auto-refresh timer stopped');
         }
     },
 
@@ -589,4 +589,4 @@ const AdminDashboard = {
 // Export for global access
 window.AdminDashboard = AdminDashboard;
 
-console.log('Admin dashboard module loaded!');
+AdminLogs.log('INFO', 'Admin dashboard module loaded!');

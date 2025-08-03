@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Request
 from sqlalchemy.orm import Session
 import shutil
 import os
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/parking-lots", tags=["admin-parking-lots"])
 
 @router.get("/")
 def get_parking_lots(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
 ):
@@ -39,6 +40,7 @@ def get_parking_lots(
 
 @router.post("/", response_model=schemas.ParkingLot)
 def create_parking_lot(
+    request: Request,
     name: str = Form(...),
     image: str | None = Form(None),
     upload_image: UploadFile = File(None),
@@ -83,6 +85,7 @@ def create_parking_lot(
 
 @router.put("/{lot_id}", response_model=schemas.ParkingLot)
 def update_parking_lot(
+    request: Request,
     lot_id: int,
     name: str = Form(...),
     image: str | None = Form(None),
@@ -117,6 +120,7 @@ def update_parking_lot(
 
 @router.delete("/{lot_id}")
 def delete_parking_lot(
+    request: Request,
     lot_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),

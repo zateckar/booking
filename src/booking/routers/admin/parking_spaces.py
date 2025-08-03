@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from ... import models, schemas
@@ -11,6 +11,7 @@ router = APIRouter()
 
 @router.get("/parking-lots/{lot_id}/spaces/", response_model=list[schemas.ParkingSpace])
 def get_parking_spaces_for_lot(
+    request: Request,
     lot_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
@@ -27,6 +28,7 @@ def get_parking_spaces_for_lot(
 
 @router.post("/parking-lots/{lot_id}/spaces/", response_model=schemas.ParkingSpace)
 def create_parking_space_for_lot(
+    request: Request,
     lot_id: int,
     space: schemas.ParkingSpaceCreate,
     db: Session = Depends(get_db),
@@ -43,6 +45,7 @@ def create_parking_space_for_lot(
 
 @router.put("/parking-lots/{lot_id}/spaces/", response_model=list[schemas.ParkingSpace])
 def update_parking_spaces(
+    request: Request,
     lot_id: int,
     spaces: list[schemas.ParkingSpaceBulkUpdate],
     db: Session = Depends(get_db),
@@ -69,6 +72,7 @@ def update_parking_spaces(
 
 @router.put("/parking-lots/{lot_id}/spaces/{space_id}", response_model=schemas.ParkingSpace)
 def update_parking_space(
+    request: Request,
     lot_id: int,
     space_id: int,
     space: schemas.ParkingSpaceUpdate,
@@ -89,6 +93,7 @@ def update_parking_space(
 
 @router.delete("/parking-lots/{lot_id}/spaces/{space_id}")
 def delete_parking_space(
+    request: Request,
     lot_id: int,
     space_id: int,
     db: Session = Depends(get_db),

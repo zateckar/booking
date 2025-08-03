@@ -146,7 +146,11 @@ class OAuth2PasswordBearerWithCookie(OAuth2PasswordBearer):
 oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="/api/token")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(
+    request: Request,
+    token: str = Depends(oauth2_scheme), 
+    db: Session = Depends(get_db)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -159,7 +163,18 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             logger.warning("JWT token missing email subject")
             raise credentials_exception
     except JWTError as e:
-        logger.warning(f"JWT validation failed: {str(e)}")
+        # Enhanced logging for expired tokens
+        extra_data = {
+            "path": request.url.path,
+            "user_agent": request.headers.get("user-agent"),
+            "client_ip": request.client.host if request.client else "N/A",
+        }
+        log_with_context(
+            logger,
+            logging.WARNING,
+            f"JWT validation failed: {str(e)}",
+            extra_data=extra_data
+        )
         raise credentials_exception
     
     user = db.query(models.User).filter(models.User.email == email).first()
@@ -171,7 +186,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
-def get_current_admin_user(current_user: models.User = Depends(get_current_user)):
+def get_current_admin_user(request: Request, current_user: models.User = Depends(get_current_user)):
     if not current_user.is_admin:
         log_with_context(
             logger, logging.WARNING,

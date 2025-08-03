@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 from datetime import datetime, timezone
@@ -18,6 +18,7 @@ router = APIRouter(prefix="/backup-settings", tags=["admin", "backup"])
 
 @router.get("/")
 async def get_backup_settings(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
 ) -> Dict[str, Any]:
@@ -57,6 +58,7 @@ async def get_backup_settings(
 
 @router.put("/")
 async def update_backup_settings(
+    request: Request,
     settings_data: Dict[str, Any],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
@@ -90,6 +92,7 @@ async def update_backup_settings(
 
 @router.post("/test-connection")
 async def test_backup_connection(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
 ) -> Dict[str, Any]:
@@ -125,6 +128,7 @@ async def test_backup_connection(
 
 @router.post("/backup-now")
 async def backup_now(
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
@@ -166,6 +170,7 @@ async def backup_now(
 
 @router.get("/list-backups")
 async def list_backups(
+    request: Request,
     limit: int = 50,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)

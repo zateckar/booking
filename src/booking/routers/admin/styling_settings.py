@@ -4,7 +4,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,7 @@ def get_styling_settings(db: Session) -> StylingSettings:
 
 @router.get("/", response_model=StylingSettingsSchema)
 def get_current_styling_settings(
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user)
 ):
@@ -50,6 +51,7 @@ def get_current_styling_settings(
 
 @router.put("/", response_model=StylingSettingsSchema)
 def update_styling_settings(
+    request: Request,
     settings_update: StylingSettingsUpdate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user)
@@ -73,6 +75,7 @@ def update_styling_settings(
 
 @router.post("/upload-logo")
 def upload_logo(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user)
@@ -136,6 +139,7 @@ def upload_logo(
 
 @router.delete("/logo")
 def delete_logo(
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user)
 ):
@@ -339,6 +343,7 @@ def get_public_styling_info(
 
 @router.get("/preview-styles.css")
 def get_preview_styles(
+    request: Request,
     # Accept all styling parameters for preview
     primary_color: Optional[str] = None,
     secondary_color: Optional[str] = None,
@@ -438,6 +443,7 @@ h1, h2, h3, h4, h5, h6 {{
 
 @router.post("/reset-to-defaults")
 def reset_to_defaults(
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user)
 ):

@@ -235,7 +235,7 @@ const AdminParkingSpaces = {
                 window.adminSpaceLicensePlates = {};
             }
         } catch (error) {
-            console.error('Error loading booking info:', error);
+            AdminLogs.log('ERROR', 'Error loading booking info:', error);
             window.adminBookedSpaceIds = [];
             window.adminSpaceLicensePlates = {};
         }
@@ -603,7 +603,7 @@ const AdminParkingSpaces = {
             canvas.requestRenderAll();
 
         } catch (error) {
-            console.error('Error deleting space:', error);
+            AdminLogs.log('ERROR', 'Error deleting space:', error);
             this.showAdminStatus(`Error deleting space "${spaceNumber}": ${error.message}`, 'danger');
         }
     },
@@ -669,7 +669,7 @@ const AdminParkingSpaces = {
                 ctx.drawImage(icon, -size / 2, -size / 2, size, size);
                 ctx.restore();
             } catch (error) {
-                console.warn('Error drawing fabric.js control icon:', error);
+                AdminLogs.log('WARNING', 'Error drawing fabric.js control icon:', error);
                 // Fallback: draw a simple geometric shape
                 ctx.save();
                 ctx.translate(left, top);
@@ -884,13 +884,13 @@ const AdminParkingSpaces = {
         // Load parking lots for the dropdown when module initializes
         this.loadParkingLotsForSpaces();
 
-        console.log('Parking spaces module initialized');
+        AdminLogs.log('INFO', 'Parking spaces module initialized');
     },
 
     // Apply space properties (placeholder for future implementation)
     applyAdminSpaceProperties() {
         // Implementation for applying space properties
-        console.log('Apply space properties');
+        AdminLogs.log('INFO', 'Apply space properties');
     },
 
     // Hide space properties panel (placeholder for future implementation)
@@ -908,4 +908,4 @@ window.AdminParkingSpaces = AdminParkingSpaces;
 // Initialize when module loads
 AdminParkingSpaces.init();
 
-console.log('Admin parking spaces module loaded!');
+AdminLogs.log('INFO', 'Admin parking spaces module loaded!');

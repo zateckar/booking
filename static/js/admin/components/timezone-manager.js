@@ -10,7 +10,7 @@ class TimezoneManager extends HTMLElement {
     }
 
     connectedCallback() {
-        console.log('🕐 TimezoneManager connected to DOM');
+        AdminLogs.log('DEBUG', '🕐 TimezoneManager connected to DOM');
         this.render();
         this.setupEventListeners();
         this.loadTimezoneData();
@@ -18,8 +18,17 @@ class TimezoneManager extends HTMLElement {
 
     render() {
         this.innerHTML = `
+            <style>
+                .card-header {
+                    background-color: var(--bs-primary);
+                    color: var(--bs-light);
+                }
+                .btn-success {
+                    background-color: var(--bs-success);
+                }
+            </style>
             <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">
                         <i class="fas fa-clock me-2"></i>Timezone Settings
                     </h5>
@@ -184,53 +193,18 @@ class TimezoneManager extends HTMLElement {
 
     // API methods
     async fetchTimezoneSettings() {
-        const token = this.getAuthToken();
-        if (window.auth && window.auth.makeAuthenticatedRequest) {
-            return window.auth.makeAuthenticatedRequest('/admin/api/timezone/settings');
-        }
-        
-        return fetch('/admin/api/timezone/settings', {
-            headers: { 'Authorization': `Bearer ${token}` },
-            credentials: 'include'
-        });
+        return await window.AdminAPI.timezone.getSettings();
     }
 
     async fetchAvailableTimezones() {
-        const token = this.getAuthToken();
-        if (window.auth && window.auth.makeAuthenticatedRequest) {
-            return window.auth.makeAuthenticatedRequest('/admin/api/timezone/timezones');
-        }
-        
-        return fetch('/admin/api/timezone/timezones', {
-            headers: { 'Authorization': `Bearer ${token}` },
-            credentials: 'include'
-        });
+        return await window.AdminAPI.timezone.getTimezones();
     }
 
     async updateTimezoneSettings(data) {
-        if (window.auth && window.auth.makeAuthenticatedRequest) {
-            return window.auth.makeAuthenticatedRequest('/admin/api/timezone/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-        }
-        
-        return fetch('/admin/api/timezone/settings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.getAuthToken()}`
-            },
-            credentials: 'include',
-            body: JSON.stringify(data)
-        });
+        return await window.AdminAPI.timezone.updateSettings(data);
     }
 
     // Utility methods
-    getAuthToken() {
-        return localStorage.getItem('access_token') || '';
-    }
 
     setLoading(loading) {
         const overlay = this.querySelector('#loading-overlay');

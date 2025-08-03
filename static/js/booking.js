@@ -112,7 +112,7 @@ function updateView() {
 async function fetchParkingLots(selectElement, onSelect) {
     if (!selectElement) return;
     
-    const response = await window.auth.makeAuthenticatedRequest('/api/parking-lots/');
+    const response = await window.API.makeAuthenticatedRequest('/api/parking-lots/');
     if (response.status === 401) {
         return;
     }
@@ -151,7 +151,6 @@ async function fetchParkingLots(selectElement, onSelect) {
     if (savedLotId && lotsById[savedLotId]) {
         // Use saved parking lot if it exists
         lotToSelect = lotsById[savedLotId];
-        console.log(`Restored last parking lot: ${lotToSelect.name}`);
     } else if (savedLotId) {
         // Clean up invalid cookie if the lot no longer exists
         CookieManager.delete(COOKIE_KEYS.LAST_PARKING_LOT);
@@ -168,7 +167,7 @@ async function fetchParkingLots(selectElement, onSelect) {
 async function fetchBookings() {
     if (!bookingsTableBody) return;
     
-    const bookingsResponse = await window.auth.makeAuthenticatedRequest('/api/bookings/');
+    const bookingsResponse = await window.API.makeAuthenticatedRequest('/api/bookings/');
     const bookings = await bookingsResponse.json();
     bookingsTableBody.innerHTML = '';
 
@@ -432,7 +431,7 @@ async function refreshParkingSpaceAvailability(lotId) {
     const startDateTime = new Date(start).toISOString();
     const endDateTime = new Date(end).toISOString();
 
-    const availabilityResponse = await window.auth.makeAuthenticatedRequest(
+    const availabilityResponse = await window.API.makeAuthenticatedRequest(
         `/api/parking-lots/${lotId}/spaces/availability?start_time=${encodeURIComponent(startDateTime)}&end_time=${encodeURIComponent(endDateTime)}`
     );
     
@@ -454,7 +453,7 @@ async function refreshParkingSpaceAvailability(lotId) {
 async function fetchParkingSpaces(lotId, canvasInstance, isAdmin, bookedSpaceIds = [], spaceLicensePlates = {}) {
     if (!canvasInstance) return;
     
-    const response = await window.auth.makeAuthenticatedRequest(`/api/parking-lots/${lotId}/spaces/`);
+    const response = await window.API.makeAuthenticatedRequest(`/api/parking-lots/${lotId}/spaces/`);
     const spaces = await response.json();
     canvasInstance.remove(...canvasInstance.getObjects());
     
@@ -553,7 +552,7 @@ async function handleCreateBooking(event) {
     const startDateTime = new Date(start_time).toISOString();
     const endDateTime = new Date(end_time).toISOString();
 
-    const response = await window.auth.makeAuthenticatedRequest('/api/bookings/', {
+    const response = await window.API.makeAuthenticatedRequest('/api/bookings/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -618,7 +617,7 @@ async function showBookingDetails(spaceId, spaceNumber) {
         const endDateTime = new Date(end).toISOString();
         
         // Fetch all bookings in the time range using admin endpoint
-        const response = await window.auth.makeAuthenticatedRequest(
+        const response = await window.API.makeAuthenticatedRequest(
             `/api/bookings/all?start_date=${start.split('T')[0]}&end_date=${end.split('T')[0]}`
         );
         
@@ -678,7 +677,7 @@ async function showBookingDetails(spaceId, spaceNumber) {
 // Cancel booking
 async function cancelBooking(bookingId) {
     if (confirm('Are you sure you want to cancel this booking?')) {
-        await window.auth.makeAuthenticatedRequest(`/api/bookings/${bookingId}/cancel`, {
+        await window.API.makeAuthenticatedRequest(`/api/bookings/${bookingId}/cancel`, {
             method: 'PUT'
         });
         await fetchBookings();
@@ -836,7 +835,7 @@ async function initLicensePlateAutocomplete() {
 
 async function fetchUserLicensePlates() {
     try {
-        const response = await window.auth.makeAuthenticatedRequest('/api/users/me/license-plates');
+        const response = await window.API.makeAuthenticatedRequest('/api/users/me/license-plates');
         if (response.ok) {
             userLicensePlates = await response.json();
         } else {

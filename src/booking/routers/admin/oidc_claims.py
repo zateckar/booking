@@ -2,7 +2,7 @@
 Admin endpoints for unified OIDC provider and claims mapping management
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import json
@@ -21,6 +21,7 @@ logger = get_logger("oidc_claims_admin")
 # OIDC Provider endpoints
 @router.post("/providers", response_model=schemas.OIDCProvider)
 def create_oidc_provider(
+    request: Request,
     provider: schemas.OIDCProviderCreate, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -41,6 +42,7 @@ def create_oidc_provider(
 
 @router.get("/providers", response_model=List[schemas.OIDCProvider])
 def get_oidc_providers(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
 ):
@@ -56,6 +58,7 @@ def get_oidc_providers(
 
 @router.get("/providers/{provider_id}", response_model=schemas.OIDCProvider)
 def get_oidc_provider(
+    request: Request,
     provider_id: int, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -77,6 +80,7 @@ def get_oidc_provider(
 
 @router.put("/providers/{provider_id}", response_model=schemas.OIDCProvider)
 def update_oidc_provider(
+    request: Request,
     provider_id: int, 
     provider_update: schemas.OIDCProviderUpdate, 
     db: Session = Depends(get_db),
@@ -106,6 +110,7 @@ def update_oidc_provider(
 
 @router.delete("/providers/{provider_id}", status_code=204)
 def delete_oidc_provider(
+    request: Request,
     provider_id: int, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -131,6 +136,7 @@ def delete_oidc_provider(
 # Claims Mapping endpoints
 @router.get("/claims-mappings", response_model=List[schemas.OIDCClaimMapping])
 def get_claim_mappings(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
 ):
@@ -174,6 +180,7 @@ def get_claim_mappings(
 
 @router.get("/claims-mappings/{mapping_id}", response_model=schemas.OIDCClaimMapping)
 def get_claim_mapping(
+    request: Request,
     mapping_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -219,6 +226,7 @@ def get_claim_mapping(
 
 @router.post("/claims-mappings", response_model=schemas.OIDCClaimMapping)
 def create_claim_mapping(
+    request: Request,
     mapping_data: schemas.OIDCClaimMappingCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -261,6 +269,7 @@ def create_claim_mapping(
 
 @router.put("/claims-mappings/{mapping_id}", response_model=schemas.OIDCClaimMapping)
 def update_claim_mapping(
+    request: Request,
     mapping_id: int,
     mapping_data: schemas.OIDCClaimMappingUpdate,
     db: Session = Depends(get_db),
@@ -311,6 +320,7 @@ def update_claim_mapping(
 
 @router.delete("/claims-mappings/{mapping_id}")
 def delete_claim_mapping(
+    request: Request,
     mapping_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -333,6 +343,7 @@ def delete_claim_mapping(
 
 @router.post("/claims-discovery", response_model=schemas.ClaimsDiscoveryResponse)
 def discover_claims(
+    req: Request,
     request: schemas.ClaimsDiscoveryRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -386,6 +397,7 @@ def discover_claims(
 
 @router.get("/user-profiles/{user_id}")
 def get_user_profile(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -422,6 +434,7 @@ def get_user_profile(
 
 @router.get("/user-profiles")
 def get_all_user_profiles(
+    request: Request,
     limit: int = 100,
     offset: int = 0,
     db: Session = Depends(get_db),

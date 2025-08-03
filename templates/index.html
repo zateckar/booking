@@ -293,140 +293,12 @@
 
                     <!-- Users Management -->
                     <div class="tab-pane fade" id="users-pane" role="tabpanel">
-                        <div class="card mt-3">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5>User Management</h5>
-                                <div>
-                                    <button class="btn btn-success btn-sm me-2" id="add-user-btn">Add User</button>
-                                    <button class="btn btn-primary btn-sm" id="refresh-users-btn">Refresh</button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Email</th>
-                                                <th>Admin</th>
-                                                <th>Bookings</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="users-table-body">
-                                            <tr><td colspan="5" class="text-center">Loading...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+                        <user-manager></user-manager>
                     </div>
 
                     <!-- Bookings Management -->
                     <div class="tab-pane fade" id="bookings-pane" role="tabpanel">
-                        <div class="card mt-3">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5>Bookings Management</h5>
-                                <div>
-                                    <button class="btn btn-success btn-sm me-2" id="export-excel-btn">
-                                        <i class="bi bi-download"></i> Export Excel
-                                    </button>
-                                    <button class="btn btn-primary btn-sm" id="refresh-bookings-btn">Refresh</button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <!-- Filters -->
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        <h6>Filters</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="bookings-filter-form">
-                                            <div class="row">
-                                                <div class="col-md-3">
-                                                    <label class="form-label">User</label>
-                                                    <select class="form-select" id="filter-user">
-                                                        <option value="">All Users</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Parking Lot</label>
-                                                    <select class="form-select" id="filter-parking-lot">
-                                                        <option value="">All Parking Lots</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <label class="form-label">Start Date</label>
-                                                    <input type="date" class="form-control" id="filter-start-date">
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <label class="form-label">End Date</label>
-                                                    <input type="date" class="form-control" id="filter-end-date">
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <label class="form-label">Actions</label>
-                                                    <div>
-                                                        <button type="submit" class="btn btn-primary btn-sm w-100 mb-1">Apply</button>
-                                                        <button type="button" class="btn btn-secondary btn-sm w-100" id="clear-filters-btn">Clear</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="row mt-2">
-                                                <div class="col-md-6">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="filter-include-cancelled" checked>
-                                                        <label class="form-check-label">Include cancelled bookings</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Items per page</label>
-                                                    <select class="form-select form-select-sm" id="items-per-page">
-                                                        <option value="10">10</option>
-                                                        <option value="20" selected>20</option>
-                                                        <option value="50">50</option>
-                                                        <option value="100">100</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Results</label>
-                                                    <div class="form-control-plaintext small" id="bookings-results-info">
-                                                        Showing 0-0 of 0 bookings
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-
-                                <!-- Bookings Table -->
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>User</th>
-                                                <th>Parking Lot</th>
-                                                <th>Space</th>
-                                                <th>Start Time</th>
-                                                <th>End Time</th>
-                                                <th>License Plate</th>
-                                                <th>Status</th>
-                                                <th>Created</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="admin-bookings-table-body">
-                                            <tr><td colspan="10" class="text-center">Loading...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <!-- Pagination -->
-                                <div class="d-flex justify-content-center mt-3">
-                                    <div id="bookings-pagination"></div>
-                                </div>
-                            </div>
-                        </div>
+                        <booking-manager></booking-manager>
                     </div>
 
                     <!-- OIDC & Claims Management -->
@@ -552,107 +424,8 @@
 
                     <!-- Logs -->
                     <div class="tab-pane fade" id="logs-pane" role="tabpanel">
-                        <!-- Log Configuration Card -->
-                        <div class="card mt-3">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5>Log Level Configuration</h5>
-                                <div>
-                                    <span class="badge bg-info">Real-time Updates</span>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="alert alert-info">
-                                    <strong>Configure Logging Levels:</strong> Set custom log levels for both backend (Python) and frontend (JavaScript) components. Changes are applied immediately without requiring application restart.
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="backend-log-level" class="form-label">
-                                                <strong>Backend Log Level</strong>
-                                                <small class="text-muted">(Python Application)</small>
-                                            </label>
-                                            <select class="form-select" id="backend-log-level">
-                                                <option value="DEBUG">DEBUG - Most verbose (all messages)</option>
-                                                <option value="INFO">INFO - Standard operational messages</option>
-                                                <option value="WARNING">WARNING - Warning messages and above</option>
-                                                <option value="ERROR">ERROR - Error messages and above</option>
-                                                <option value="CRITICAL">CRITICAL - Only critical errors</option>
-                                            </select>
-                                            <div class="form-text">Controls Python application logging level stored in database</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="frontend-log-level" class="form-label">
-                                                <strong>Frontend Log Level</strong>
-                                                <small class="text-muted">(Browser Console)</small>
-                                            </label>
-                                            <select class="form-select" id="frontend-log-level">
-                                                <option value="DEBUG">DEBUG - Most verbose (all messages)</option>
-                                                <option value="INFO">INFO - Standard operational messages</option>
-                                                <option value="WARNING">WARNING - Warning messages and above</option>
-                                                <option value="ERROR">ERROR - Error messages and above</option>
-                                                <option value="CRITICAL">CRITICAL - Only critical errors</option>
-                                            </select>
-                                            <div class="form-text">Controls browser console logging level</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-12">
-                                        <div class="alert alert-success d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>Current Status:</strong> 
-                                                Backend: <span id="current-backend-level" class="badge bg-primary">Loading...</span> 
-                                                Frontend: <span id="current-frontend-level" class="badge bg-primary">Loading...</span>
-                                            </div>
-                                            <small class="text-muted">Last updated: <span id="config-last-updated">Never</span></small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Log Viewing Card -->
-                        <div class="card mt-3">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5>Application Logs</h5>
-                                <div>
-                                    <input type="datetime-local" class="form-control form-control-sm d-inline-block w-auto me-2" id="log-start-date" placeholder="Start Date">
-                                    <input type="datetime-local" class="form-control form-control-sm d-inline-block w-auto me-2" id="log-end-date" placeholder="End Date">
-                                    <select class="form-select form-select-sm d-inline-block w-auto me-2" id="log-level-filter">
-                                        <option value="">All Levels</option>
-                                        <option value="CRITICAL">Critical</option>
-                                        <option value="ERROR">Error</option>
-                                        <option value="WARNING">Warning</option>
-                                        <option value="INFO">Info</option>
-                                        <option value="DEBUG">Debug</option>
-                                    </select>
-                                    <select class="form-select form-select-sm d-inline-block w-auto me-2" id="log-logger-filter">
-                                        <option value="">All Loggers</option>
-                                    </select>
-                                    <button class="btn btn-primary btn-sm" id="refresh-logs-btn">Refresh</button>
-                                    <button class="btn btn-warning btn-sm" id="cleanup-old-logs-btn">Cleanup Old Logs</button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>Time</th>
-                                                <th>Level</th>
-                                                <th>Logger</th>
-                                                <th>Message</th>
-                                                <th>User</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="logs-table-body">
-                                            <tr><td colspan="5" class="text-center">Loading...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                        <div class="mt-3">
+                            <log-manager></log-manager>
                         </div>
                     </div>
 
@@ -1125,14 +898,10 @@
                                         <h5>Branding & Styling</h5>
                                         <div>
                                             <button class="btn btn-warning btn-sm me-2" id="reset-styling-btn">Reset to Defaults</button>
-                                            <button class="btn btn-info btn-sm" id="refresh-styling-btn">Refresh</button>
+                                            <button class="btn btn-secondary btn-sm" id="refresh-styling-btn">Refresh</button>
                                         </div>
                                     </div>
                                     <div class="card-body">
-                                        <div class="alert alert-info">
-                                            <strong>Customize your application's appearance:</strong> Upload a logo, change colors, fonts, and add custom CSS to match your brand.
-                                        </div>
-
                                         <!-- Enable/Disable Styling -->
                                         <div class="mb-4">
                                             <div class="form-check form-switch">

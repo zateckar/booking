@@ -1,5 +1,15 @@
 /* Authentication module for Parking Booking System */
 
+// Stub for AdminLogs to prevent errors if the admin module is not loaded
+if (typeof window.AdminLogs === 'undefined') {
+    window.queuedLogs = [];
+    window.AdminLogs = {
+        log: function(level, message, ...args) {
+            window.queuedLogs.push({ level, message, args });
+        }
+    };
+}
+
 let currentUser = null;
 let tokenRefreshTimer = null;
 let isRefreshing = false;
@@ -106,7 +116,7 @@ async function handleLogout() {
             
             // Check if this is an OIDC logout with redirect URL
             if (data.redirect_url) {
-                console.log('OIDC logout detected, redirecting to:', data.redirect_url);
+                AdminLogs.log('INFO', 'OIDC logout detected, redirecting to:', data.redirect_url);
                 
                 // Clear localStorage tokens before redirecting to OIDC provider
                 localStorage.removeItem('access_token');
@@ -119,7 +129,7 @@ async function handleLogout() {
             }
         }
     } catch (error) {
-        console.log('Logout endpoint call failed, but proceeding with local cleanup');
+        AdminLogs.log('WARNING', 'Logout endpoint call failed, but proceeding with local cleanup');
     }
     
     // Standard local logout cleanup
@@ -133,7 +143,7 @@ async function handleLogout() {
 
 // Enhanced setupUI function to work with both localStorage tokens and HttpOnly cookies
 async function setupUI() {
-    console.log('setupUI: Starting authentication check');
+    AdminLogs.log('DEBUG', 'setupUI: Starting authentication check');
     
     try {
         // Try to authenticate - the backend will check both Authorization header and cookies
@@ -141,9 +151,9 @@ async function setupUI() {
         const headers = {};
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
-            console.log('setupUI: Using localStorage token');
+            AdminLogs.log('DEBUG', 'setupUI: Using localStorage token');
         } else {
-            console.log('setupUI: No localStorage token, relying on cookies');
+            AdminLogs.log('DEBUG', 'setupUI: No localStorage token, relying on cookies');
         }
 
         const response = await fetch('/api/users/me?include_parking_lots=true', {
@@ -151,11 +161,11 @@ async function setupUI() {
             credentials: 'include' // IMPORTANT: include cookies in the request
         });
 
-        console.log('setupUI: Auth response status:', response.status);
+        AdminLogs.log('DEBUG', 'setupUI: Auth response status:', response.status);
 
         if (!response.ok) {
             // Authentication failed - clear any stored token and show login
-            console.log('setupUI: Authentication failed, showing login form');
+            AdminLogs.log('INFO', 'setupUI: Authentication failed, showing login form');
             localStorage.removeItem('access_token');
             header.style.display = 'none';
             mainContent.style.display = 'none';
@@ -164,10 +174,10 @@ async function setupUI() {
         }
 
         currentUser = await response.json();
-        console.log('setupUI: Successfully authenticated user:', currentUser.email, 'Admin:', currentUser.is_admin);
+        AdminLogs.log('INFO', 'setupUI: Successfully authenticated user:', currentUser.email, 'Admin:', currentUser.is_admin);
         userEmail.textContent = currentUser.email;
 
-        console.log('setupUI: Switching to authenticated UI');
+        AdminLogs.log('DEBUG', 'setupUI: Switching to authenticated UI');
         loginFormContainer.style.display = 'none';
         mainContent.style.display = 'block';
         header.style.display = 'flex';
@@ -191,9 +201,9 @@ async function setupUI() {
         // Load styling settings after successful authentication
         loadStylingSettings();
         
-        console.log('setupUI: UI setup completed successfully');
+        AdminLogs.log('INFO', 'setupUI: UI setup completed successfully');
     } catch (error) {
-        console.error('setupUI: Error during authentication check:', error);
+        AdminLogs.log('ERROR', 'setupUI: Error during authentication check:', error);
         // On error, show login form
         localStorage.removeItem('access_token');
         header.style.display = 'none';
@@ -222,7 +232,7 @@ function setupNavigation() {
     if (adminModeLink) {
         adminModeLink.addEventListener('click', async () => {
             if (currentUser && currentUser.is_admin) {
-                console.log('🔧 [Auth] Admin mode activated, loading admin system...');
+                AdminLogs.log('INFO', '🔧 [Auth] Admin mode activated, loading admin system...');
                 
                 currentView = 'admin';
                 document.getElementById('user-view').style.display = 'none';
@@ -312,13 +322,42 @@ async function fetchOidcProvidersForLogin() {
             }
         }
     } catch (error) {
-        console.error('Error fetching OIDC providers:', error);
+        AdminLogs.log('ERROR', 'Error fetching OIDC providers:', error);
     }
 }
 
 // Token refresh management
+
+/**
+ * Decodes a JWT token and checks if it's expiring within a given buffer.
+ * @param {string} token - The JWT token.
+ * @param {number} bufferMinutes - The buffer in minutes.
+ * @returns {boolean} - True if the token is expiring soon or is invalid.
+ */
+function isTokenExpiringSoonClientSide(token, bufferMinutes = 10) {
+    if (!token) return true;
+
+    try {
+        const payloadBase64 = token.split('.')[1];
+        if (!payloadBase64) return true;
+
+        const decodedPayload = JSON.parse(atob(payloadBase64));
+        const exp = decodedPayload.exp;
+        if (!exp) return true;
+
+        const expirationTime = new Date(exp * 1000);
+        const bufferTime = new Date();
+        bufferTime.setMinutes(bufferTime.getMinutes() + bufferMinutes);
+
+        return bufferTime >= expirationTime;
+    } catch (error) {
+        AdminLogs.log('ERROR', 'Failed to decode or check token expiration on client-side:', error);
+        return true; // Assume it needs refresh on error
+    }
+}
+
 function startTokenRefreshTimer() {
-    console.log('Starting token refresh timer...');
+    AdminLogs.log('DEBUG', 'Starting token refresh timer...');
     stopTokenRefreshTimer(); // Clear any existing timer
     
     // Check token status every 2 minutes
@@ -330,7 +369,7 @@ function startTokenRefreshTimer() {
 
 function stopTokenRefreshTimer() {
     if (tokenRefreshTimer) {
-        console.log('Stopping token refresh timer...');
+        AdminLogs.log('DEBUG', 'Stopping token refresh timer...');
         clearInterval(tokenRefreshTimer);
         tokenRefreshTimer = null;
     }
@@ -338,19 +377,27 @@ function stopTokenRefreshTimer() {
 
 async function checkAndRefreshToken() {
     if (isRefreshing) {
-        console.log('Token refresh already in progress, skipping...');
+        AdminLogs.log('DEBUG', 'Token refresh already in progress, skipping...');
         return;
     }
-    
+
     const token = localStorage.getItem('access_token');
     if (!token) {
-        console.log('No access token found, stopping refresh timer');
+        AdminLogs.log('DEBUG', 'No access token found, stopping refresh timer');
         stopTokenRefreshTimer();
         return;
     }
-    
+
+    // **New:** Proactive client-side check with a 10-minute buffer
+    if (isTokenExpiringSoonClientSide(token, 10)) {
+        AdminLogs.log('INFO', 'Token expiring soon based on client-side check, refreshing proactively.');
+        await refreshAccessToken();
+        return; // Refresh initiated, no need to call the API endpoint
+    }
+
+    // If client-side check passes, still perform the server-side check as a fallback
     try {
-        console.log('Checking token status...');
+        AdminLogs.log('DEBUG', 'Client-side check passed, now checking token status with server...');
         const response = await fetch('/api/check-token', {
             method: 'POST',
             headers: {
@@ -359,41 +406,41 @@ async function checkAndRefreshToken() {
             },
             credentials: 'include'
         });
-        
+
         if (response.ok) {
             const data = await response.json();
-            console.log('Token status:', data);
-            
+            AdminLogs.log('DEBUG', 'Server token status:', data);
+
             if (data.needs_refresh) {
-                console.log(`Token needs refresh: ${data.reason}`);
+                AdminLogs.log('INFO', `Server indicates token needs refresh: ${data.reason}`);
                 await refreshAccessToken();
             } else {
-                console.log('Token is still valid');
+                AdminLogs.log('DEBUG', 'Server confirms token is still valid');
             }
         } else {
-            console.log('Failed to check token status, attempting refresh...');
+            AdminLogs.log('WARNING', 'Failed to check token status with server, attempting refresh as a precaution...');
             await refreshAccessToken();
         }
     } catch (error) {
-        console.error('Error checking token status:', error);
-        // Try to refresh token on error
+        AdminLogs.log('ERROR', 'Error during server-side token status check:', error);
+        // Attempt to refresh token on error as a fallback
         await refreshAccessToken();
     }
 }
 
 async function refreshAccessToken() {
     if (isRefreshing) {
-        console.log('Token refresh already in progress');
+        AdminLogs.log('DEBUG', 'Token refresh already in progress');
         return;
     }
     
     isRefreshing = true;
-    console.log('Attempting to refresh access token...');
+    AdminLogs.log('INFO', 'Attempting to refresh access token...');
     
     try {
         const refreshToken = localStorage.getItem('refresh_token');
         if (!refreshToken) {
-            console.log('No refresh token available, redirecting to login');
+            AdminLogs.log('WARNING', 'No refresh token available, redirecting to login');
             await handleSessionExpired();
             return;
         }
@@ -409,19 +456,19 @@ async function refreshAccessToken() {
         
         if (response.ok) {
             const data = await response.json();
-            console.log('Token refreshed successfully');
+            AdminLogs.log('INFO', 'Token refreshed successfully');
             
             // Update stored access token
             localStorage.setItem('access_token', data.access_token);
             
             // Continue monitoring
-            console.log('Token refresh completed, continuing monitoring...');
+            AdminLogs.log('DEBUG', 'Token refresh completed, continuing monitoring...');
         } else {
-            console.log('Token refresh failed, session expired');
+            AdminLogs.log('WARNING', 'Token refresh failed, session expired');
             await handleSessionExpired();
         }
     } catch (error) {
-        console.error('Error refreshing token:', error);
+        AdminLogs.log('ERROR', 'Error refreshing token:', error);
         await handleSessionExpired();
     } finally {
         isRefreshing = false;
@@ -429,7 +476,7 @@ async function refreshAccessToken() {
 }
 
 async function handleSessionExpired() {
-    console.log('Session expired, redirecting to login...');
+    AdminLogs.log('INFO', 'Session expired, redirecting to login...');
     
     stopTokenRefreshTimer();
     
@@ -466,44 +513,6 @@ async function handleSessionExpired() {
             }
         }, 5000);
     }
-}
-
-// Enhanced utility function to make authenticated API requests with auto-refresh
-async function makeAuthenticatedRequest(url, options = {}) {
-    const token = localStorage.getItem('access_token');
-    const headers = { ...options.headers };
-    
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    const response = await fetch(url, {
-        ...options,
-        headers,
-        credentials: 'include'
-    });
-    
-    // If we get a 401 (Unauthorized), try to refresh the token and retry
-    if (response.status === 401 && !isRefreshing) {
-        console.log(`API request to ${url} returned 401, attempting token refresh...`);
-        
-        await refreshAccessToken();
-        
-        // Retry the request with the new token
-        const newToken = localStorage.getItem('access_token');
-        if (newToken && newToken !== token) {
-            console.log(`Retrying API request to ${url} with refreshed token...`);
-            headers['Authorization'] = `Bearer ${newToken}`;
-            
-            return fetch(url, {
-                ...options,
-                headers,
-                credentials: 'include'
-            });
-        }
-    }
-    
-    return response;
 }
 
 // Check if user is authenticated
@@ -560,12 +569,12 @@ async function loadStylingSettings() {
                 }
             }
             
-            console.log('✅ Styling settings applied to UI elements');
+            AdminLogs.log('INFO', '✅ Styling settings applied to UI elements');
         } else {
-            console.log('ℹ️ Could not load public styling info, using defaults');
+            AdminLogs.log('INFO', 'ℹ️ Could not load public styling info, using defaults');
         }
     } catch (error) {
-        console.log('Styling settings not available:', error.message);
+        AdminLogs.log('WARNING', 'Styling settings not available:', error.message);
     }
 }
 
@@ -578,7 +587,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Cleanup admin timers when logging out
 function cleanupAdminTimers() {
-    console.log('Cleaning up admin timers...');
+    AdminLogs.log('DEBUG', 'Cleaning up admin timers...');
     
     // Stop dashboard auto-refresh timer
     if (window.AdminDashboard && typeof window.AdminDashboard.stopAutoRefresh === 'function') {
@@ -588,27 +597,27 @@ function cleanupAdminTimers() {
     // Add cleanup for other admin modules with timers if any
     // This can be extended as more modules with timers are added
     
-    console.log('Admin timers cleanup completed');
+    AdminLogs.log('DEBUG', 'Admin timers cleanup completed');
 }
 
 // Function to load admin system when needed
 async function loadAdminSystemIfNeeded() {
-    console.log('🔧 [Auth] loadAdminSystemIfNeeded called');
+    AdminLogs.log('DEBUG', '🔧 [Auth] loadAdminSystemIfNeeded called');
     
     if (!currentUser || !currentUser.is_admin) {
-        console.log('🔧 [Auth] User is not admin, skipping admin system load');
+        AdminLogs.log('DEBUG', '🔧 [Auth] User is not admin, skipping admin system load');
         return;
     }
     
     // Check if AdminLoader is available
     if (!window.AdminLoader) {
-        console.log('🔧 [Auth] AdminLoader not available, admin system may not be loaded yet');
+        AdminLogs.log('DEBUG', '🔧 [Auth] AdminLoader not available, admin system may not be loaded yet');
         return;
     }
     
     // Load admin system if not already loaded
     if (!window.AdminLoader.isLoaded()) {
-        console.log('🔧 [Auth] Loading admin system...');
+        AdminLogs.log('INFO', '🔧 [Auth] Loading admin system...');
         window.AdminLoader.loadAdminSystem();
         
         // Wait for the admin system to be loaded
@@ -619,32 +628,33 @@ async function loadAdminSystemIfNeeded() {
         }
         
         if (window.initAdmin) {
-            console.log('🔧 [Auth] Admin system loaded successfully');
+            AdminLogs.log('INFO', '🔧 [Auth] Admin system loaded successfully');
         } else {
-            console.error('🔧 [Auth] Failed to load admin system after waiting');
+            AdminLogs.log('ERROR', '🔧 [Auth] Failed to load admin system after waiting');
             return;
         }
     }
     
     // Initialize admin system if not already initialized
     if (!window.AdminLoader.isInitialized()) {
-        console.log('🔧 [Auth] Initializing admin system...');
+        AdminLogs.log('INFO', '🔧 [Auth] Initializing admin system...');
         window.AdminLoader.initializeAdminForUser();
     } else {
-        console.log('🔧 [Auth] Admin system already initialized');
+        AdminLogs.log('DEBUG', '🔧 [Auth] Admin system already initialized');
     }
 }
 
 // Export functions for use in other modules
 window.auth = {
-    makeAuthenticatedRequest,
     isAuthenticated,
     isAdmin,
     getCurrentUser,
     setupUI,
     cleanupAdminTimers,
     loadAdminSystemIfNeeded,
-    loadStylingSettings
+    loadStylingSettings,
+    refreshAccessToken,
+    isRefreshing: () => isRefreshing
 };
 
 // Also expose loadStylingSettings globally for easy access

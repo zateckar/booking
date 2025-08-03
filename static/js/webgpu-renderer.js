@@ -27,7 +27,7 @@ class WebGPURenderer {
     // Initialize WebGPU
     async init(canvas) {
         if (!WebGPURenderer.isSupported()) {
-            console.log('WebGPU not supported, falling back to Fabric.js');
+            AdminLogs.log('INFO', 'WebGPU not supported, falling back to Fabric.js');
             return false;
         }
 
@@ -40,7 +40,7 @@ class WebGPURenderer {
             });
             
             if (!adapter) {
-                console.log('WebGPU adapter not available');
+                AdminLogs.log('WARNING', 'WebGPU adapter not available');
                 return false;
             }
 
@@ -63,10 +63,10 @@ class WebGPURenderer {
             this.createBuffers();
             
             this.isInitialized = true;
-            console.log('WebGPU renderer initialized successfully');
+            AdminLogs.log('INFO', 'WebGPU renderer initialized successfully');
             return true;
         } catch (error) {
-            console.error('Failed to initialize WebGPU:', error);
+            AdminLogs.log('ERROR', 'Failed to initialize WebGPU:', error);
             return false;
         }
     }
@@ -377,9 +377,9 @@ class WebGPURenderer {
             );
 
             this.createBindGroup();
-            console.log('Background image loaded into WebGPU texture');
+            AdminLogs.log('DEBUG', 'Background image loaded into WebGPU texture');
         } catch (error) {
-            console.error('Failed to load background image:', error);
+            AdminLogs.log('ERROR', 'Failed to load background image:', error);
         }
     }
 
@@ -568,4 +568,4 @@ class WebGPURenderer {
 // Export for use in other modules
 window.WebGPURenderer = WebGPURenderer;
 
-console.log('WebGPU Renderer module loaded');
+AdminLogs.log('INFO', 'WebGPU Renderer module loaded');

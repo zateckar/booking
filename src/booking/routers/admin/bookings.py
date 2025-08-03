@@ -38,7 +38,8 @@ def get_all_bookings(
         )
     
     if start_date:
-        query = query.filter(models.Booking.start_time >= start_date)
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        query = query.filter(models.Booking.start_time >= start_datetime)
     
     if end_date:
         # Add one day to include bookings on the end date
@@ -82,7 +83,8 @@ def get_bookings_count(
         )
     
     if start_date:
-        query = query.filter(models.Booking.start_time >= start_date)
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        query = query.filter(models.Booking.start_time >= start_datetime)
     
     if end_date:
         end_datetime = datetime.combine(end_date, datetime.max.time())
@@ -107,8 +109,9 @@ def delete_booking(booking_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/bookings/export")
-def export_bookings_excel(
+def export_bookings(
     db: Session = Depends(get_db),
+    format: str = Query("excel", description="Export format: 'excel' or 'csv'"),
     user_id: Optional[int] = Query(None),
     parking_lot_id: Optional[int] = Query(None),
     start_date: Optional[date] = Query(None),
@@ -132,7 +135,8 @@ def export_bookings_excel(
         )
     
     if start_date:
-        query = query.filter(models.Booking.start_time >= start_date)
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        query = query.filter(models.Booking.start_time >= start_datetime)
     
     if end_date:
         end_datetime = datetime.combine(end_date, datetime.max.time())
@@ -165,35 +169,41 @@ def export_bookings_excel(
     # Create Excel file
     df = pd.DataFrame(data)
     
-    # Create Excel file in memory
-    excel_buffer = io.BytesIO()
-    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Bookings', index=False)
-        
-        # Auto-adjust column widths
-        worksheet = writer.sheets['Bookings']
-        for column in worksheet.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            worksheet.column_dimensions[column_letter].width = adjusted_width
-    
-    excel_buffer.seek(0)
-    
-    # Generate filename with current timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"bookings_export_{timestamp}.xlsx"
     
-    # Return Excel file
+    if format.lower() == 'csv':
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False)
+        content = csv_buffer.getvalue()
+        media_type = "text/csv; charset=utf-8"
+        filename = f"bookings_export_{timestamp}.csv"
+    else:
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Bookings', index=False)
+            
+            # Auto-adjust column widths
+            worksheet = writer.sheets['Bookings']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        excel_buffer.seek(0)
+        content = excel_buffer.getvalue()
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        filename = f"bookings_export_{timestamp}.xlsx"
+
     return Response(
-        content=excel_buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        content=content,
+        media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 

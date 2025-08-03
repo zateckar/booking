@@ -49,7 +49,7 @@ async function loadAdminModule(moduleName) {
             document.head.appendChild(script);
         });
     } catch (error) {
-        console.error(`Error loading admin module ${moduleName}:`, error);
+        AdminLogs.log('ERROR', `Error loading admin module ${moduleName}:`, error);
         throw error;
     }
 }
@@ -68,51 +68,49 @@ async function loadWebComponents() {
             document.head.appendChild(sharedStylesScript);
         });
         
-        console.log('🎨 Shared styles loaded successfully');
+        AdminLogs.log('INFO', '🎨 Shared styles loaded successfully');
     } catch (error) {
-        console.error('❌ Failed to load shared styles:', error);
+        AdminLogs.log('ERROR', '❌ Failed to load shared styles:', error);
     }
     
-    const components = ['dashboard-card', 'dashboard-chart', 'oidc-provider-manager', 'claims-mapping-manager', 'backup-manager', 'timezone-manager', 'email-manager'];
+    const components = ['dashboard-card', 'dashboard-chart', 'oidc-provider-manager', 'claims-mapping-manager', 'backup-manager', 'timezone-manager', 'email-manager', 'log-manager', 'user-manager', 'booking-manager'];
     
     for (const component of components) {
         try {
             const script = document.createElement('script');
             script.src = `/static/js/admin/components/${component}.js`;
-            script.async = true;
+            script.async = false; // Load sequentially
             
             await new Promise((resolve, reject) => {
                 script.onload = () => {
-                    console.log(`✅ Web component script loaded: ${component}`);
+                    AdminLogs.log('INFO', `✅ Web component script loaded: ${component}`);
                     resolve();
                 };
                 script.onerror = () => {
-                    console.error(`❌ Failed to load component script: ${component}`);
+                    AdminLogs.log('ERROR', `❌ Failed to load component script: ${component}`);
                     reject(new Error(`Failed to load component: ${component}`));
                 };
                 document.head.appendChild(script);
             });
             
-            console.log(`📦 Web component registered: ${component}`);
-            
-            // Verify the custom element is actually defined
-            setTimeout(() => {
-                const isDefined = customElements.get(component);
-                console.log(`🔍 Custom element '${component}' defined:`, !!isDefined);
-            }, 100);
+            // Verify the custom element is defined
+            await customElements.whenDefined(component);
+            AdminLogs.log('INFO', `📦 Web component registered and defined: ${component}`);
+
         } catch (error) {
-            console.error(`Error loading web component ${component}:`, error);
+            AdminLogs.log('ERROR', `Error loading web component ${component}:`, error);
         }
     }
 }
 
 // Initialize admin functionality
 async function initAdmin() {
-    console.log('Admin.js main initialization...');
+    AdminLogs.log('INFO', 'Admin.js main initialization...');
     
     try {
         // Load core components first
         await loadAdminModule('api-client');
+        document.dispatchEvent(new CustomEvent('admin-api-loaded'));
         await loadAdminModule('notifications');
         
         // Load web components for dashboard
@@ -121,9 +119,9 @@ async function initAdmin() {
         setupAdminEventListeners();
         await initializeControlImages();
         
-        console.log('Admin main initialized successfully!');
+        AdminLogs.log('INFO', 'Admin main initialized successfully!');
     } catch (error) {
-        console.error('Failed to initialize admin:', error);
+        AdminLogs.log('ERROR', 'Failed to initialize admin:', error);
     }
 }
 
@@ -131,11 +129,11 @@ async function initAdmin() {
 function setupAdminEventListeners() {
     const tabsConfig = [
         { id: 'dashboard-tab', module: 'dashboard', objectName: 'AdminDashboard', load: () => window.AdminDashboard.init() },
-        { id: 'users-tab', module: 'users', objectName: 'AdminUsers', load: () => window.AdminUsers.loadUsers() },
-        { id: 'bookings-tab', module: 'bookings', objectName: 'AdminBookings', load: () => window.AdminBookings.ensureInitialized() },
+        { id: 'users-tab', module: 'users' },
+        { id: 'bookings-tab', module: 'bookings' },
         { id: 'oidc-claims-tab', module: 'oidc-claims', objectName: 'AdminOIDCClaims', load: async () => {
             // Web components will auto-load their data, but ensure module is loaded
-            console.log('OIDC & Claims tab activated - ensuring module and web components are ready');
+            AdminLogs.log('INFO', 'OIDC & Claims tab activated - ensuring module and web components are ready');
             
             // Ensure the AdminOIDCClaims module is properly initialized
             if (window.AdminOIDCClaims && typeof window.AdminOIDCClaims.ensureInitialized === 'function') {
@@ -160,7 +158,7 @@ function setupAdminEventListeners() {
                                     claimsContent?.textContent?.includes('Error loading'));
                     
                     if (hasError) {
-                        console.log('OIDC & Claims components had loading errors, user can use refresh buttons');
+                        AdminLogs.log('WARNING', 'OIDC & Claims components had loading errors, user can use refresh buttons');
                         if (window.AdminNotifications) {
                             window.AdminNotifications.showWarning('Some OIDC & Claims data failed to load. Use the Refresh buttons to retry.');
                         }
@@ -174,8 +172,7 @@ function setupAdminEventListeners() {
             window.AdminParkingSpaces.initializeAdminCanvas();
         }},
         { id: 'logs-tab', module: 'logs', objectName: 'AdminLogs', load: () => {
-            window.AdminLogs.loadLogs();
-            window.AdminLogs.loadLoggerNames();
+            AdminLogs.log('INFO', 'Logs tab activated - log-manager component will handle loading.');
         }},
         { id: 'dynamic-reports-tab', module: 'dynamic-reports', objectName: 'AdminDynamicReports', load: () => {
             window.AdminDynamicReports.loadDynamicReportsData();
@@ -183,27 +180,27 @@ function setupAdminEventListeners() {
         }},
         { id: 'branding-tab', module: 'styling', objectName: 'AdminStyling', load: () => {
             // The AdminStyling module will automatically load settings in its constructor
-            console.log('Branding & Styling tab activated');
+            AdminLogs.log('INFO', 'Branding & Styling tab activated');
         }},
         { id: 'system-tab', modules: [], objectNames: [], load: async () => {
             // All system functionality now handled by web components
             // backup-manager, timezone-manager, and email-manager will auto-initialize
-            console.log('🔧 System tab loaded - checking for web components...');
+            AdminLogs.log('INFO', '🔧 System tab loaded - checking for web components...');
             
             // Check if web components are present in DOM
             const backupManager = document.querySelector('backup-manager');
             const timezoneManager = document.querySelector('timezone-manager');
             const emailManager = document.querySelector('email-manager');
             
-            console.log('🔍 Web components in DOM:', {
+            AdminLogs.log('DEBUG', '🔍 Web components in DOM:', {
                 backupManager: !!backupManager,
                 timezoneManager: !!timezoneManager,
                 emailManager: !!emailManager
             });
             
-            if (backupManager) console.log('🔧 backup-manager element found');
-            if (timezoneManager) console.log('🕐 timezone-manager element found');
-            if (emailManager) console.log('📧 email-manager element found');
+            if (backupManager) AdminLogs.log('DEBUG', '🔧 backup-manager element found');
+            if (timezoneManager) AdminLogs.log('DEBUG', '🕐 timezone-manager element found');
+            if (emailManager) AdminLogs.log('DEBUG', '📧 email-manager element found');
 
             // Ensure AdminBackup module's event listeners are attached
             if (window.AdminBackup && typeof window.AdminBackup.ensureInitialized === 'function') {
@@ -224,38 +221,47 @@ function setupAdminEventListeners() {
     // Enhanced module loading with proper error handling and timing
     const loadTabData = async (tabConfig) => {
         if (!tabConfig) {
-            console.warn('🔄 [AdminMain] loadTabData called with null/undefined tabConfig');
+            AdminLogs.log('WARNING', '🔄 [AdminMain] loadTabData called with null/undefined tabConfig');
             return;
         }
 
-        console.log(`🔄 [AdminMain] Loading tab data for module: ${tabConfig.module}`);
-        console.log(`🔄 [AdminMain] Tab config:`, tabConfig);
+        AdminLogs.log('DEBUG', `🔄 [AdminMain] Loading tab data for module: ${tabConfig.module}`);
+        AdminLogs.log('DEBUG', `🔄 [AdminMain] Tab config:`, tabConfig);
         
         try {
             // Handle multi-module tabs (like system tab) or single module tabs
-            const modules = tabConfig.modules || [tabConfig.module];
-            const objectNames = tabConfig.objectNames || [tabConfig.objectName];
+            const modules = tabConfig.modules || (tabConfig.module ? [tabConfig.module] : []);
+            const objectNames = tabConfig.objectNames || (tabConfig.objectName ? [tabConfig.objectName] : []);
             const primaryModule = modules[0];
+
+            if (!primaryModule) {
+                return;
+            }
             
             // Show loading state
-            showLoadingState(primaryModule);
+            if (primaryModule) {
+                showLoadingState(primaryModule);
+            }
             
             // Load all module scripts
             for (const moduleName of modules) {
-                console.log(`🔄 [AdminMain] Loading module script: ${moduleName}`);
+                if (customElements.get(moduleName + '-manager')) {
+                    continue;
+                }
+                AdminLogs.log('DEBUG', `🔄 [AdminMain] Loading module script: ${moduleName}`);
                 await loadAdminModule(moduleName);
-                console.log(`🔄 [AdminMain] Module script loaded: ${moduleName}`);
+                AdminLogs.log('DEBUG', `🔄 [AdminMain] Module script loaded: ${moduleName}`);
             }
             
             // Wait for all module objects to be available
             const moduleObjects = [];
             for (const objectName of objectNames) {
-                console.log(`🔄 [AdminMain] Waiting for module object: ${objectName}`);
+                AdminLogs.log('DEBUG', `🔄 [AdminMain] Waiting for module object: ${objectName}`);
                 const moduleObject = await waitForModuleObject(objectName, 5000);
                 
                 if (moduleObject) {
-                    console.log(`🔄 [AdminMain] ✅ Module ${objectName} loaded successfully`);
-                    console.log(`🔄 [AdminMain] Module object methods:`, Object.getOwnPropertyNames(moduleObject).filter(name => typeof moduleObject[name] === 'function'));
+                    AdminLogs.log('INFO', `🔄 [AdminMain] ✅ Module ${objectName} loaded successfully`);
+                    AdminLogs.log('DEBUG', `🔄 [AdminMain] Module object methods:`, Object.getOwnPropertyNames(moduleObject).filter(name => typeof moduleObject[name] === 'function'));
                     
                     // Expose module functions globally
                     exposeModuleFunctions(moduleObject);
@@ -273,52 +279,40 @@ function setupAdminEventListeners() {
             });
             
             // Wait a bit more to ensure modules are fully initialized
-            console.log(`🔄 [AdminMain] Waiting for module initialization: ${primaryModule}`);
+            AdminLogs.log('DEBUG', `🔄 [AdminMain] Waiting for module initialization: ${primaryModule}`);
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // Ensure module event listeners are set up for all modules
             moduleObjects.forEach((moduleObject, index) => {
                 if (typeof moduleObject.ensureInitialized === 'function') {
-                    console.log(`🔄 [AdminMain] Ensuring initialization for ${objectNames[index]}`);
+                    AdminLogs.log('DEBUG', `🔄 [AdminMain] Ensuring initialization for ${objectNames[index]}`);
                     moduleObject.ensureInitialized();
                 } else {
-                    console.log(`🔄 [AdminMain] No ensureInitialized method found for ${objectNames[index]}`);
+                    AdminLogs.log('DEBUG', `🔄 [AdminMain] No ensureInitialized method found for ${objectNames[index]}`);
                 }
             });
-            
-            // Special debug for parking lots
-            if (primaryModule === 'parking-lots') {
-                console.log('🚗 [AdminMain] PARKING LOTS DEBUG:');
-                console.log('🚗 [AdminMain] - window.AdminParkingLots:', window.AdminParkingLots);
-                console.log('🚗 [AdminMain] - window.AdminAPI:', window.AdminAPI);
-                console.log('🚗 [AdminMain] - window.AdminAPI.parkingLots:', window.AdminAPI?.parkingLots);
-                console.log('🚗 [AdminMain] - DOM element check:');
-                console.log('🚗 [AdminMain]   - parking-lots-admin-table-body:', document.getElementById('parking-lots-admin-table-body'));
-                console.log('🚗 [AdminMain]   - refresh-parking-lots-btn:', document.getElementById('refresh-parking-lots-btn'));
-                console.log('🚗 [AdminMain]   - add-parking-lot-btn:', document.getElementById('add-parking-lot-btn'));
-            }
-            
+                
             // Execute the load function
             if (tabConfig.load) {
-                console.log(`🔄 [AdminMain] Executing load function for ${primaryModule}`);
+                AdminLogs.log('DEBUG', `🔄 [AdminMain] Executing load function for ${primaryModule}`);
                 
                 // Special handling for parking lots
                 if (primaryModule === 'parking-lots') {
-                    console.log('🚗 [AdminMain] About to call window.AdminParkingLots.loadParkingLotsAdmin()');
-                    console.log('🚗 [AdminMain] Function exists:', typeof window.AdminParkingLots.loadParkingLotsAdmin);
+                    AdminLogs.log('DEBUG', '🚗 [AdminMain] About to call window.AdminParkingLots.loadParkingLotsAdmin()');
+                    AdminLogs.log('DEBUG', '🚗 [AdminMain] Function exists:', typeof window.AdminParkingLots.loadParkingLotsAdmin);
                 }
                 
                 await tabConfig.load();
-                console.log(`🔄 [AdminMain] ✅ Data loading completed for ${primaryModule}`);
+                AdminLogs.log('INFO', `🔄 [AdminMain] ✅ Data loading completed for ${primaryModule}`);
             } else {
-                console.log(`🔄 [AdminMain] No load function defined for ${primaryModule}`);
+                AdminLogs.log('DEBUG', `🔄 [AdminMain] No load function defined for ${primaryModule}`);
             }
             
             // Clear loading state
             clearLoadingState(primaryModule);
         } catch (error) {
-            console.error(`🔄 [AdminMain] ❌ Failed to load tab data for module ${tabConfig.module}:`, error);
-            console.error(`🔄 [AdminMain] Error stack:`, error.stack);
+            AdminLogs.log('ERROR', `🔄 [AdminMain] ❌ Failed to load tab data for module ${tabConfig.module}:`, error);
+            AdminLogs.log('ERROR', `🔄 [AdminMain] Error stack:`, error.stack);
             showErrorState(tabConfig.module, error.message);
             
             // Show user-friendly error message
@@ -418,11 +412,13 @@ function setupAdminEventListeners() {
         const element = document.getElementById(tabConfig.id);
         if (element) {
             element.addEventListener('show.bs.tab', () => {
-                console.log(`Tab activated: ${tabConfig.id}`);
-                loadTabData(tabConfig);
+                AdminLogs.log('DEBUG', `Tab activated: ${tabConfig.id}`);
+                if (tabConfig.module !== 'users' && tabConfig.module !== 'bookings') {
+                    loadTabData(tabConfig);
+                }
             });
         } else {
-            console.warn(`Tab element not found: ${tabConfig.id}`);
+            AdminLogs.log('WARNING', `Tab element not found: ${tabConfig.id}`);
         }
     });
 
@@ -431,7 +427,7 @@ function setupAdminEventListeners() {
     if (activeTabElement) {
         const activeTabConfig = tabsConfig.find(t => t.id === activeTabElement.id);
         if (activeTabConfig) {
-            console.log(`Loading initial active tab: ${activeTabConfig.id}`);
+            AdminLogs.log('DEBUG', `Loading initial active tab: ${activeTabConfig.id}`);
             setTimeout(() => loadTabData(activeTabConfig), 100);
         }
     }
@@ -453,7 +449,7 @@ function initializeControlImages() {
         deleteImg = document.createElement('img');
         deleteImg.onload = checkComplete;
         deleteImg.onerror = () => {
-            console.warn('Failed to load delete icon, using fallback');
+            AdminLogs.log('WARNING', 'Failed to load delete icon, using fallback');
             checkComplete();
         };
         deleteImg.src = deleteIcon;
@@ -461,7 +457,7 @@ function initializeControlImages() {
         cloneImg = document.createElement('img');
         cloneImg.onload = checkComplete;
         cloneImg.onerror = () => {
-            console.warn('Failed to load clone icon, using fallback');
+            AdminLogs.log('WARNING', 'Failed to load clone icon, using fallback');
             checkComplete();
         };
         cloneImg.src = cloneIcon;
@@ -510,4 +506,4 @@ window.AdminCore = {
 window.initAdmin = initAdmin;
 
 // Do NOT auto-initialize - wait for auth system to call us
-console.log('🔧 [AdminMain] Admin main module loaded! Waiting for authenticated admin user...');
+AdminLogs.log('INFO', '🔧 [AdminMain] Admin main module loaded! Waiting for authenticated admin user...');

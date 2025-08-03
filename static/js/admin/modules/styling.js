@@ -56,7 +56,7 @@ class AdminStyling {
 
     async loadStylingSettings() {
         try {
-            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/');
+            const response = await window.AdminAPI.makeRequest('/api/admin/styling-settings/');
 
             if (!response.ok) {
                 throw new Error('Failed to load styling settings');
@@ -64,9 +64,7 @@ class AdminStyling {
 
             this.currentSettings = await response.json();
             this.populateForm();
-            if (window.AdminNotifications) {
-                AdminNotifications.showSuccess('Styling settings loaded');
-            }
+
         } catch (error) {
             console.error('Error loading styling settings:', error);
             if (window.AdminNotifications) {
@@ -240,7 +238,7 @@ class AdminStyling {
         formData.append('file', file);
 
         try {
-            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/upload-logo', {
+            const response = await window.AdminAPI.makeRequest('/api/admin/styling-settings/upload-logo', {
                 method: 'POST',
                 body: formData
             });
@@ -279,7 +277,7 @@ class AdminStyling {
         }
 
         try {
-            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/logo', {
+            const response = await window.AdminAPI.makeRequest('/api/admin/styling-settings/logo', {
                 method: 'DELETE'
             });
 
@@ -574,7 +572,7 @@ ${settings.custom_css || ''}
 
             const settings = this.getFormValues();
 
-            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/', {
+            const response = await window.AdminAPI.makeRequest('/api/admin/styling-settings/', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -651,7 +649,7 @@ ${settings.custom_css || ''}
         }
 
         try {
-            const response = await window.auth.makeAuthenticatedRequest('/api/admin/styling-settings/reset-to-defaults', {
+            const response = await window.AdminAPI.makeRequest('/api/admin/styling-settings/reset-to-defaults', {
                 method: 'POST'
             });
 

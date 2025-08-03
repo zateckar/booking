@@ -2,7 +2,7 @@
 Admin endpoints for dynamic reporting with configurable columns
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
@@ -30,6 +30,7 @@ logger = get_logger("dynamic_reports_admin")
 
 @router.get("/columns")
 def get_available_columns(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
 ):
@@ -48,6 +49,7 @@ def get_available_columns(
 
 @router.post("/generate")
 def generate_dynamic_report(
+    req: Request,
     request: schemas.DynamicReportRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -79,6 +81,7 @@ def generate_dynamic_report(
 
 @router.post("/generate/excel")
 def generate_dynamic_excel_report(
+    req: Request,
     request: schemas.DynamicReportRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -191,6 +194,7 @@ def generate_dynamic_excel_report(
 
 @router.post("/columns", response_model=schemas.ReportColumn)
 def create_report_column(
+    request: Request,
     column_data: schemas.ReportColumnCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -210,6 +214,7 @@ def create_report_column(
 
 @router.put("/columns/{column_id}", response_model=schemas.ReportColumn)
 def update_report_column(
+    request: Request,
     column_id: int,
     column_data: schemas.ReportColumnUpdate,
     db: Session = Depends(get_db),
@@ -235,6 +240,7 @@ def update_report_column(
 
 @router.delete("/columns/{column_id}")
 def delete_report_column(
+    request: Request,
     column_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -257,6 +263,7 @@ def delete_report_column(
 
 @router.get("/templates", response_model=List[schemas.ReportTemplate])
 def get_report_templates(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
 ):
@@ -297,6 +304,7 @@ def get_report_templates(
 
 @router.post("/templates", response_model=schemas.ReportTemplate)
 def create_report_template(
+    request: Request,
     template_data: schemas.ReportTemplateCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -332,6 +340,7 @@ def create_report_template(
 
 @router.put("/templates/{template_id}", response_model=schemas.ReportTemplate)
 def update_report_template(
+    request: Request,
     template_id: int,
     template_data: schemas.ReportTemplateUpdate,
     db: Session = Depends(get_db),
@@ -384,6 +393,7 @@ def update_report_template(
 
 @router.delete("/templates/{template_id}")
 def delete_report_template(
+    request: Request,
     template_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -414,6 +424,7 @@ def delete_report_template(
 
 @router.post("/templates/{template_id}/generate")
 def generate_report_from_template(
+    request: Request,
     template_id: int,
     months: int = 2,
     include_excel: bool = False,
@@ -474,6 +485,7 @@ def generate_report_from_template(
 
 @router.post("/send-email")
 def send_dynamic_report_email(
+    req: Request,
     request: Dict[str, Any],
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -514,6 +526,7 @@ def send_dynamic_report_email(
 
 @router.get("/schedule-settings")
 def get_dynamic_report_schedule_settings(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
 ):
@@ -557,6 +570,7 @@ def get_dynamic_report_schedule_settings(
 
 @router.put("/schedule-settings")
 def update_dynamic_report_schedule_settings(
+    request: Request,
     settings: schemas.EmailSettingsUpdate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -596,6 +610,7 @@ def update_dynamic_report_schedule_settings(
 
 @router.post("/send-test-email")
 def send_test_dynamic_report(
+    req: Request,
     request: Dict[str, Any],
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -635,6 +650,7 @@ def send_test_dynamic_report(
 # Scheduled Dynamic Reports Endpoints
 @router.get("/schedules", response_model=List[schemas.ScheduledDynamicReport])
 def get_scheduled_dynamic_reports(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
 ):
@@ -703,6 +719,7 @@ def get_scheduled_dynamic_reports(
 
 @router.post("/schedules", response_model=schemas.ScheduledDynamicReport)
 def create_scheduled_dynamic_report(
+    request: Request,
     schedule_data: schemas.ScheduledDynamicReportCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -782,6 +799,7 @@ def create_scheduled_dynamic_report(
 
 @router.put("/schedules/{schedule_id}", response_model=schemas.ScheduledDynamicReport)
 def update_scheduled_dynamic_report(
+    request: Request,
     schedule_id: int,
     schedule_data: schemas.ScheduledDynamicReportUpdate,
     db: Session = Depends(get_db),
@@ -820,6 +838,7 @@ def update_scheduled_dynamic_report(
 
 @router.delete("/schedules/{schedule_id}")
 def delete_scheduled_dynamic_report(
+    request: Request,
     schedule_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
@@ -847,6 +866,7 @@ def delete_scheduled_dynamic_report(
 
 @router.post("/schedules/{schedule_id}/toggle")
 def toggle_scheduled_dynamic_report(
+    request: Request,
     schedule_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)

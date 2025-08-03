@@ -6,11 +6,11 @@ const AdminOIDCClaims = {
 
     // Initialize the unified module
     init() {
-        console.log('Initializing unified OIDC & Claims module...');
+        AdminLogs.log('INFO', 'Initializing unified OIDC & Claims module...');
         this.setupEventListeners();
         this.setupModalEventListeners();
         this.startBackdropCleanupMonitor();
-        console.log('Unified OIDC & Claims module initialized');
+        AdminLogs.log('INFO', 'Unified OIDC & Claims module initialized');
     },
 
     // Setup event listeners for the unified interface
@@ -26,7 +26,7 @@ const AdminOIDCClaims = {
         // Setup form submission listeners
         this.setupFormListeners();
 
-        console.log('Unified OIDC & Claims event listeners setup complete');
+        AdminLogs.log('DEBUG', 'Unified OIDC & Claims event listeners setup complete');
     },
 
     // Setup form submission event listeners
@@ -36,7 +36,7 @@ const AdminOIDCClaims = {
         if (addOidcForm && !addOidcForm.hasAttribute('data-unified-listener')) {
             addOidcForm.addEventListener('submit', this.handleAddProviderSubmit.bind(this));
             addOidcForm.setAttribute('data-unified-listener', 'true');
-            console.log('Add OIDC form listener attached (unified)');
+            AdminLogs.log('DEBUG', 'Add OIDC form listener attached (unified)');
         }
 
         // Edit OIDC Provider form
@@ -44,7 +44,7 @@ const AdminOIDCClaims = {
         if (editOidcForm && !editOidcForm.hasAttribute('data-unified-listener')) {
             editOidcForm.addEventListener('submit', this.handleEditProviderSubmit.bind(this));
             editOidcForm.setAttribute('data-unified-listener', 'true');
-            console.log('Edit OIDC form listener attached (unified)');
+            AdminLogs.log('DEBUG', 'Edit OIDC form listener attached (unified)');
         }
 
         // Add Claim Mapping form
@@ -55,7 +55,7 @@ const AdminOIDCClaims = {
                 this.handleAddMappingSubmit();
             });
             addClaimForm.setAttribute('data-unified-listener', 'true');
-            console.log('Add claim mapping form listener attached (unified)');
+            AdminLogs.log('DEBUG', 'Add claim mapping form listener attached (unified)');
         }
 
         // Edit Claim Mapping form
@@ -66,12 +66,12 @@ const AdminOIDCClaims = {
                 this.handleEditMappingSubmit();
             });
             editClaimForm.setAttribute('data-unified-listener', 'true');
-            console.log('Edit claim mapping form listener attached (unified)');
+            AdminLogs.log('DEBUG', 'Edit claim mapping form listener attached (unified)');
         }
 
         // If elements aren't found, they might not be rendered yet
         if (!addOidcForm || !editOidcForm || !addClaimForm || !editClaimForm) {
-            console.log('Some unified form elements not found yet, will retry when tab is activated');
+            AdminLogs.log('DEBUG', 'Some unified form elements not found yet, will retry when tab is activated');
         }
     },
 
@@ -219,7 +219,7 @@ const AdminOIDCClaims = {
                 }
             });
             
-            console.log('Modal backdrop cleanup completed');
+            AdminLogs.log('DEBUG', 'Modal backdrop cleanup completed');
         }, 100); // Wait 200ms for Bootstrap animations to finish
     },
     
@@ -239,13 +239,13 @@ const AdminOIDCClaims = {
             if (modalElement) {
                 // Listen for when modal is completely hidden
                 modalElement.addEventListener('hidden.bs.modal', () => {
-                    console.log(`Modal ${modalId} hidden event triggered`);
+                    AdminLogs.log('DEBUG', `Modal ${modalId} hidden event triggered`);
                     this.forceRemoveBackdrop();
                 });
                 
                 // Listen for when modal hide starts
                 modalElement.addEventListener('hide.bs.modal', () => {
-                    console.log(`Modal ${modalId} hide event triggered`);
+                    AdminLogs.log('DEBUG', `Modal ${modalId} hide event triggered`);
                 });
             }
         });
@@ -274,7 +274,7 @@ const AdminOIDCClaims = {
                 setTimeout(() => {
                     const finalCheck = document.querySelectorAll('.modal.show, .modal.showing, .modal[style*="display: block"]').length === 0;
                     if (finalCheck) {
-                        console.log('Found genuinely stuck modal backdrops, removing...');
+                        AdminLogs.log('WARNING', 'Found genuinely stuck modal backdrops, removing...');
                         backdrops.forEach(backdrop => backdrop.remove());
                         
                         // Clean up body classes and styles
@@ -293,7 +293,7 @@ const AdminOIDCClaims = {
                 // Check if there's actually a modal that should be open
                 const activeModals = document.querySelectorAll('.modal.show, .modal.showing');
                 if (activeModals.length === 0) {
-                    console.log('Backdrop clicked with no active modals, removing...');
+                    AdminLogs.log('WARNING', 'Backdrop clicked with no active modals, removing...');
                     e.target.remove();
                     this.forceRemoveBackdrop();
                 }
@@ -614,7 +614,7 @@ const AdminOIDCClaims = {
 
     // Ensure initialization when tab becomes active
     ensureInitialized() {
-        console.log('Ensuring unified OIDC & Claims module is properly initialized...');
+        AdminLogs.log('DEBUG', 'Ensuring unified OIDC & Claims module is properly initialized...');
         this.setupEventListeners();
         this.setupFormListeners();
     }
@@ -626,4 +626,4 @@ window.AdminOIDCClaims = AdminOIDCClaims;
 // Initialize when module loads
 AdminOIDCClaims.init();
 
-console.log('Unified OIDC & Claims module loaded!');
+AdminLogs.log('INFO', 'Unified OIDC & Claims module loaded!');

@@ -143,7 +143,7 @@ class OIDCProviderManager extends HTMLElement {
         const maxRetries = 20; // 10 seconds max wait
 
         while (retries < maxRetries) {
-            if (window.auth && window.auth.makeAuthenticatedRequest && window.AdminAPI) {
+            if (window.auth && window.AdminAPI) {
                 await this.loadProviders();
                 return;
             }

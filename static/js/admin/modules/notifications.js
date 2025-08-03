@@ -4,7 +4,7 @@ const AdminNotifications = {
     // Initialize notification system
     init() {
         this.createNotificationContainer();
-        console.log('Admin notifications module initialized');
+        AdminLogs.log('INFO', 'Admin notifications module initialized');
     },
 
     // Create notification container if it doesn't exist
@@ -118,7 +118,7 @@ const AdminNotifications = {
 
     // Handle API errors with detailed error information
     handleApiError(error, context = 'API Error') {
-        console.error(`${context}:`, error);
+        AdminLogs.log('ERROR', `${context}:`, error);
         
         let message = 'An unexpected error occurred';
         
@@ -324,4 +324,4 @@ window.AdminNotifications = AdminNotifications;
 // Initialize immediately
 AdminNotifications.init();
 
-console.log('Admin notifications module loaded!');
+AdminLogs.log('INFO', 'Admin notifications module loaded!');

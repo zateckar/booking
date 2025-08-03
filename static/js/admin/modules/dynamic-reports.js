@@ -444,12 +444,12 @@ const AdminDynamicReports = {
 
     // Initialize dynamic reports module
     init() {
-        console.log('Initializing dynamic reports module...');
+        AdminLogs.log('INFO', 'Initializing dynamic reports module...');
         
         // Setup event listeners with retry mechanism
         this.setupEventListeners();
         
-        console.log('Dynamic reports module initialized');
+        AdminLogs.log('INFO', 'Dynamic reports module initialized');
     },
 
     // Setup event listeners with proper error handling
@@ -459,7 +459,7 @@ const AdminDynamicReports = {
         if (saveTemplateBtn && !saveTemplateBtn.hasAttribute('data-dynamic-reports-listener')) {
             saveTemplateBtn.addEventListener('click', this.showReportTemplateModal.bind(this));
             saveTemplateBtn.setAttribute('data-dynamic-reports-listener', 'true');
-            console.log('Save template button listener attached');
+            AdminLogs.log('DEBUG', 'Save template button listener attached');
         }
 
         // Refresh button
@@ -467,7 +467,7 @@ const AdminDynamicReports = {
         if (refreshBtn && !refreshBtn.hasAttribute('data-dynamic-reports-listener')) {
             refreshBtn.addEventListener('click', this.loadDynamicReportsData.bind(this));
             refreshBtn.setAttribute('data-dynamic-reports-listener', 'true');
-            console.log('Refresh dynamic reports button listener attached');
+            AdminLogs.log('DEBUG', 'Refresh dynamic reports button listener attached');
         }
 
         // Generate Report button
@@ -475,7 +475,7 @@ const AdminDynamicReports = {
         if (generateBtn && !generateBtn.hasAttribute('data-dynamic-reports-listener')) {
             generateBtn.addEventListener('click', this.generateDynamicReport.bind(this));
             generateBtn.setAttribute('data-dynamic-reports-listener', 'true');
-            console.log('Generate report button listener attached');
+            AdminLogs.log('DEBUG', 'Generate report button listener attached');
         }
 
         // Download Excel button
@@ -483,7 +483,7 @@ const AdminDynamicReports = {
         if (downloadExcelBtn && !downloadExcelBtn.hasAttribute('data-dynamic-reports-listener')) {
             downloadExcelBtn.addEventListener('click', this.downloadDynamicReportExcel.bind(this));
             downloadExcelBtn.setAttribute('data-dynamic-reports-listener', 'true');
-            console.log('Download Excel button listener attached');
+            AdminLogs.log('DEBUG', 'Download Excel button listener attached');
         }
 
         // Clear Selection button
@@ -491,7 +491,7 @@ const AdminDynamicReports = {
         if (clearSelectionBtn && !clearSelectionBtn.hasAttribute('data-dynamic-reports-listener')) {
             clearSelectionBtn.addEventListener('click', this.clearSelectedColumns.bind(this));
             clearSelectionBtn.setAttribute('data-dynamic-reports-listener', 'true');
-            console.log('Clear selection button listener attached');
+            AdminLogs.log('DEBUG', 'Clear selection button listener attached');
         }
 
         // Email & Scheduling tab activation
@@ -499,7 +499,7 @@ const AdminDynamicReports = {
         if (emailTabBtn && !emailTabBtn.hasAttribute('data-dynamic-reports-listener')) {
             emailTabBtn.addEventListener('click', this.initEmailScheduling.bind(this));
             emailTabBtn.setAttribute('data-dynamic-reports-listener', 'true');
-            console.log('Email tab button listener attached');
+            AdminLogs.log('DEBUG', 'Email tab button listener attached');
         }
 
         // Unified email form listeners
@@ -507,7 +507,7 @@ const AdminDynamicReports = {
 
         // If elements aren't found, they might not be rendered yet
         if (!saveTemplateBtn || !refreshBtn || !generateBtn || !downloadExcelBtn || !clearSelectionBtn) {
-            console.log('Some dynamic reports elements not found yet, will retry when tab is activated');
+            AdminLogs.log('DEBUG', 'Some dynamic reports elements not found yet, will retry when tab is activated');
         }
     },
 
@@ -687,7 +687,7 @@ const AdminDynamicReports = {
                 this.populateTemplateDropdowns(templates);
             }
         } catch (error) {
-            console.warn('Error loading templates for dropdowns:', error);
+            AdminLogs.log('WARNING', 'Error loading templates for dropdowns:', error);
         }
     },
 
@@ -1276,37 +1276,37 @@ const AdminDynamicReports = {
 
     // Load scheduled reports
     async loadScheduledReports() {
-        console.log('🔄 Loading scheduled reports...');
+        AdminLogs.log('INFO', '🔄 Loading scheduled reports...');
         try {
             const response = await AdminAPI.dynamicReports.getSchedules();
-            console.log('📡 API Response:', { ok: response.ok, status: response.status });
+            AdminLogs.log('DEBUG', '📡 API Response:', { ok: response.ok, status: response.status });
             
             if (response.ok) {
                 const schedules = await response.json();
-                console.log('📊 Received schedules:', schedules);
-                console.log(`📈 Total schedules: ${schedules.length}`);
+                AdminLogs.log('DEBUG', '📊 Received schedules:', schedules);
+                AdminLogs.log('DEBUG', `📈 Total schedules: ${schedules.length}`);
                 
                 this.renderScheduledReports(schedules);
-                console.log('✅ Schedules rendered successfully');
+                AdminLogs.log('INFO', '✅ Schedules rendered successfully');
             } else {
-                console.error('❌ Failed to load scheduled reports:', response.status, response.statusText);
+                AdminLogs.log('ERROR', '❌ Failed to load scheduled reports:', response.status, response.statusText);
                 AdminNotifications.showError('Failed to load scheduled reports');
             }
         } catch (error) {
-            console.error('❌ Error loading scheduled reports:', error);
+            AdminLogs.log('ERROR', '❌ Error loading scheduled reports:', error);
             AdminNotifications.handleApiError(error, 'Error loading scheduled reports');
         }
     },
 
     // Manual trigger to force load scheduled reports (for debugging)
     async forceLoadScheduledReports() {
-        console.log('🔧 Force loading scheduled reports...');
+        AdminLogs.log('DEBUG', '🔧 Force loading scheduled reports...');
         await this.loadScheduledReports();
     },
 
     // Render scheduled reports list
     renderScheduledReports(schedules) {
-        console.log('🎨 Rendering scheduled reports...', schedules);
+        AdminLogs.log('DEBUG', '🎨 Rendering scheduled reports...', schedules);
         
         // Try multiple possible container IDs
         const possibleContainerIds = [
@@ -1320,25 +1320,25 @@ const AdminDynamicReports = {
         for (const containerId of possibleContainerIds) {
             container = document.getElementById(containerId);
             if (container) {
-                console.log(`✅ Found container: ${containerId}`);
+                AdminLogs.log('DEBUG', `✅ Found container: ${containerId}`);
                 break;
             }
         }
         
         if (!container) {
-            console.error('❌ No suitable container found for scheduled reports');
-            console.log('🔍 Available elements with "scheduled" in ID:');
+            AdminLogs.log('ERROR', '❌ No suitable container found for scheduled reports');
+            AdminLogs.log('DEBUG', '🔍 Available elements with "scheduled" in ID:');
             const allElements = document.querySelectorAll('*');
             allElements.forEach(el => {
                 if (el.id && el.id.toLowerCase().includes('scheduled')) {
-                    console.log(`  - ${el.id}`);
+                    AdminLogs.log('DEBUG', `  - ${el.id}`);
                 }
             });
             return;
         }
 
         if (schedules.length === 0) {
-            console.log('📭 No schedules to display, showing empty state');
+            AdminLogs.log('DEBUG', '📭 No schedules to display, showing empty state');
             container.innerHTML = `
                 <div class="text-center text-muted py-4">
                     <h6>📅 No Scheduled Reports</h6>
@@ -1351,7 +1351,7 @@ const AdminDynamicReports = {
             return;
         }
 
-        console.log(`📝 Rendering ${schedules.length} scheduled reports`);
+        AdminLogs.log('DEBUG', `📝 Rendering ${schedules.length} scheduled reports`);
         const htmlContent = schedules.map(schedule => `
             <div class="card mb-3">
                 <div class="card-body">
@@ -1411,32 +1411,32 @@ const AdminDynamicReports = {
         `).join('');
         
         container.innerHTML = htmlContent;
-        console.log('✅ Scheduled reports rendered successfully');
+        AdminLogs.log('INFO', '✅ Scheduled reports rendered successfully');
     },
 
     // Debug function to check the current state (call from browser console)
     debugScheduledReports() {
-        console.log('🔍 Debugging scheduled reports...');
+        AdminLogs.log('DEBUG', '🔍 Debugging scheduled reports...');
         
         // Check if container exists
         const container = document.getElementById('scheduled-reports-list');
-        console.log('📦 Container found:', !!container);
+        AdminLogs.log('DEBUG', '📦 Container found:', !!container);
         if (container) {
-            console.log('📦 Container visible:', container.offsetParent !== null);
-            console.log('📦 Container content:', container.innerHTML.length > 0 ? 'Has content' : 'Empty');
+            AdminLogs.log('DEBUG', '📦 Container visible:', container.offsetParent !== null);
+            AdminLogs.log('DEBUG', '📦 Container content:', container.innerHTML.length > 0 ? 'Has content' : 'Empty');
         }
         
         // Try to load schedules manually
-        console.log('🔄 Manually triggering loadScheduledReports...');
+        AdminLogs.log('DEBUG', '🔄 Manually triggering loadScheduledReports...');
         this.loadScheduledReports();
         
         // List all elements with "scheduled" in their ID
-        console.log('🔍 All elements with "scheduled" in ID or class:');
+        AdminLogs.log('DEBUG', '🔍 All elements with "scheduled" in ID or class:');
         const allElements = document.querySelectorAll('*');
         allElements.forEach(el => {
             if ((el.id && el.id.toLowerCase().includes('scheduled')) || 
                 (el.className && el.className.toLowerCase().includes('scheduled'))) {
-                console.log(`  - ID: ${el.id}, Class: ${el.className}, Visible: ${el.offsetParent !== null}`);
+                AdminLogs.log('DEBUG', `  - ID: ${el.id}, Class: ${el.className}, Visible: ${el.offsetParent !== null}`);
             }
         });
     },
@@ -1649,7 +1649,7 @@ const AdminDynamicReports = {
 
     // Ensure initialization when tab becomes active
     ensureInitialized() {
-        console.log('Ensuring dynamic reports module is properly initialized...');
+        AdminLogs.log('DEBUG', 'Ensuring dynamic reports module is properly initialized...');
         this.setupEventListeners();
         this.setupModalListeners();
         
@@ -1684,9 +1684,9 @@ const AdminDynamicReports = {
                 document.getElementById(selector);
                 
             if (tab && !tab.hasAttribute('data-scheduled-listener')) {
-                console.log(`Found scheduled reports tab with selector: ${selector}`);
+                AdminLogs.log('DEBUG', `Found scheduled reports tab with selector: ${selector}`);
                 tab.addEventListener('click', () => {
-                    console.log('Scheduled reports tab clicked, loading schedules...');
+                    AdminLogs.log('DEBUG', 'Scheduled reports tab clicked, loading schedules...');
                     setTimeout(() => this.loadScheduledReports(), 100);
                 });
                 tab.setAttribute('data-scheduled-listener', 'true');
@@ -1695,15 +1695,15 @@ const AdminDynamicReports = {
         });
         
         if (!tabFound) {
-            console.warn('Scheduled reports tab not found with any of the expected selectors');
-            console.log('Available elements with "scheduled" in id or class:');
+            AdminLogs.log('WARNING', 'Scheduled reports tab not found with any of the expected selectors');
+            AdminLogs.log('DEBUG', 'Available elements with "scheduled" in id or class:');
             const allElements = document.querySelectorAll('*');
             allElements.forEach(el => {
                 if (el.id && el.id.toLowerCase().includes('scheduled')) {
-                    console.log(`  - ID: ${el.id}`);
+                    AdminLogs.log('DEBUG', `  - ID: ${el.id}`);
                 }
                 if (el.className && el.className.toLowerCase().includes('scheduled')) {
-                    console.log(`  - Class: ${el.className}`);
+                    AdminLogs.log('DEBUG', `  - Class: ${el.className}`);
                 }
             });
         }
@@ -1721,7 +1721,7 @@ const AdminDynamicReports = {
         possibleContainers.forEach(containerId => {
             const container = document.getElementById(containerId);
             if (container && container.offsetParent !== null) {
-                console.log(`Found visible scheduled reports container: ${containerId}, loading schedules...`);
+                AdminLogs.log('DEBUG', `Found visible scheduled reports container: ${containerId}, loading schedules...`);
                 setTimeout(() => this.loadScheduledReports(), 100);
             }
         });
@@ -1734,4 +1734,4 @@ window.AdminDynamicReports = AdminDynamicReports;
 // Initialize when module loads (but elements might not exist yet)
 AdminDynamicReports.init();
 
-console.log('Admin dynamic reports module loaded!');
+AdminLogs.log('INFO', 'Admin dynamic reports module loaded!');

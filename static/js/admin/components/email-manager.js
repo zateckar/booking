@@ -5,21 +5,33 @@
 class EmailManager extends HTMLElement {
     constructor() {
         super();
-        this.emailSettings = {};
+        AdminLogs.log('DEBUG', '📧 EmailManager constructor');
+        this.settings = {};
     }
 
     connectedCallback() {
-        console.log('📧 EmailManager connected to DOM');
+        AdminLogs.log('DEBUG', '📧 EmailManager connected to DOM');
         this.render();
-        this.setupEventListeners();
-        this.waitForAuthAndLoad();
         this.loadEmailData();
+        this.setupEventListeners();
     }
 
     render() {
         this.innerHTML = `
+            <style>
+                .card-header {
+                    background-color: var(--bs-info);
+                    color: var(--bs-light);
+                }
+                .btn-success {
+                    background-color: var(--bs-success);
+                }
+                .btn-primary {
+                    background-color: var(--bs-primary);
+                }
+            </style>
             <div class="card shadow-sm">
-                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">
                         Email Configuration
                     </h5>

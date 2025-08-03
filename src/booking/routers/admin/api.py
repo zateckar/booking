@@ -2,7 +2,7 @@
 Admin API router for frontend components
 Provides API endpoints that match frontend expectations with /admin/api prefix
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Dict, Any
@@ -21,6 +21,7 @@ class TimezoneSettingsRequest(BaseModel):
 
 @router.get("/timezone/settings")
 def get_timezone_settings(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -35,6 +36,7 @@ def get_timezone_settings(
 
 @router.get("/timezone/timezones")
 def get_available_timezones(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -46,6 +48,7 @@ def get_available_timezones(
 
 @router.post("/timezone/settings")
 def update_timezone_settings(
+    req: Request,
     request: TimezoneSettingsRequest,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
@@ -75,6 +78,7 @@ class EmailSettingsRequest(BaseModel):
 
 @router.get("/email/settings")
 def get_email_settings(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -110,6 +114,7 @@ def get_email_settings(
 
 @router.post("/email/settings")
 def update_email_settings(
+    req: Request,
     request: EmailSettingsRequest,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
@@ -140,6 +145,7 @@ def update_email_settings(
 
 @router.post("/email/test-config")
 def test_email_config(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -178,6 +184,7 @@ class BackupSettingsRequest(BaseModel):
 
 @router.get("/backup/settings")
 async def get_backup_settings(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -216,6 +223,7 @@ async def get_backup_settings(
 
 @router.post("/backup/settings")
 async def update_backup_settings(
+    req: Request,
     request: BackupSettingsRequest,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
@@ -245,6 +253,7 @@ async def update_backup_settings(
 
 @router.post("/backup/test-connection")
 async def test_backup_connection(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -277,6 +286,7 @@ async def test_backup_connection(
 
 @router.post("/backup/backup-now")
 async def backup_now(
+    request: Request,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -310,6 +320,7 @@ async def backup_now(
 
 @router.get("/backup/list")
 async def list_backups(
+    request: Request,
     limit: int = 20,
     current_admin_user: models.User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)

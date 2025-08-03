@@ -4,9 +4,9 @@ Admin routes for viewing application logs and managing log configuration
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, and_, or_, func
+from sqlalchemy import desc, and_, or_, func, text
 from pydantic import BaseModel
 
 from ... import models, schemas
@@ -30,6 +30,7 @@ router = APIRouter()
 
 @router.get("/logs")
 def get_logs(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     level: Optional[str] = Query(None, description="Filter by log level"),
@@ -109,6 +110,7 @@ def get_logs(
 
 @router.get("/logs/levels")
 def get_log_levels(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
 ):
@@ -119,6 +121,7 @@ def get_log_levels(
 
 @router.get("/logs/loggers")
 def get_logger_names(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
 ):
@@ -129,6 +132,7 @@ def get_logger_names(
 
 @router.get("/logs/stats")
 def get_log_stats(
+    request: Request,
     hours: int = Query(24, ge=1, le=168, description="Number of hours to analyze"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
@@ -178,6 +182,7 @@ def get_log_stats(
 
 @router.delete("/logs/cleanup")
 def cleanup_old_logs(
+    request: Request,
     days: int = Query(30, ge=1, le=365, description="Delete logs older than this many days"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
@@ -200,12 +205,24 @@ def cleanup_old_logs(
     }
 
 
-@router.get("/logs/config", response_model=LogConfigResponse)
-def get_log_config(
+@router.post("/logs/vacuum")
+def vacuum_database(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
 ):
-    """Get current logging configuration"""
+    """Vacuum the database to reclaim space"""
+    try:
+        db.execute(text("VACUUM"))
+        db.commit()
+        return {"message": "Database vacuumed successfully"}
+    except Exception as e:
+        logger.error(f"Error vacuuming database: {e}")
+        raise HTTPException(status_code=500, detail="Error vacuuming database")
+
+
+def _get_log_config(db: Session) -> LogConfigResponse:
+    """Helper to get current logging configuration"""
     
     # Get backend log level from AppConfig
     backend_level_config = db.query(models.AppConfig).filter(
@@ -226,8 +243,19 @@ def get_log_config(
     )
 
 
+@router.get("/logs/config", response_model=LogConfigResponse)
+def get_log_config(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user),
+):
+    """Get current logging configuration"""
+    return _get_log_config(db)
+
+
 @router.put("/logs/config", response_model=LogConfigResponse)
 def update_log_config(
+    request: Request,
     config_update: LogConfigUpdate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user),
@@ -291,4 +319,4 @@ def update_log_config(
     db.commit()
     
     # Return updated configuration
-    return get_log_config(db, current_user)
+    return _get_log_config(db)

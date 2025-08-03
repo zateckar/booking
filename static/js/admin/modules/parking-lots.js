@@ -3,37 +3,37 @@
 const AdminParkingLots = {
     // Load all parking lots for admin view
     async loadParkingLotsAdmin() {
-        console.log('🚗 [ParkingLots] Starting loadParkingLotsAdmin()');
+        AdminLogs.log('DEBUG', '🚗 [ParkingLots] Starting loadParkingLotsAdmin()');
         
         const tbody = document.getElementById('parking-lots-admin-table-body');
         if (!tbody) {
-            console.error('🚗 [ParkingLots] ERROR: Table body element "parking-lots-admin-table-body" not found!');
-            console.log('🚗 [ParkingLots] Available elements with "parking" in ID:', 
+            AdminLogs.log('ERROR', '🚗 [ParkingLots] ERROR: Table body element "parking-lots-admin-table-body" not found!');
+            AdminLogs.log('DEBUG', '🚗 [ParkingLots] Available elements with "parking" in ID:', 
                 Array.from(document.querySelectorAll('*')).filter(el => el.id && el.id.includes('parking')).map(el => el.id));
             return;
         }
         
-        console.log('🚗 [ParkingLots] Table body element found, setting loading state');
+        AdminLogs.log('DEBUG', '🚗 [ParkingLots] Table body element found, setting loading state');
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
         
         try {
-            console.log('🚗 [ParkingLots] Checking AdminAPI availability...');
+            AdminLogs.log('DEBUG', '🚗 [ParkingLots] Checking AdminAPI availability...');
             if (!window.AdminAPI) {
-                console.error('🚗 [ParkingLots] ERROR: AdminAPI not available on window object!');
+                AdminLogs.log('ERROR', '🚗 [ParkingLots] ERROR: AdminAPI not available on window object!');
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">AdminAPI not loaded</td></tr>';
                 return;
             }
             
             if (!window.AdminAPI.parkingLots) {
-                console.error('🚗 [ParkingLots] ERROR: AdminAPI.parkingLots not available!');
+                AdminLogs.log('ERROR', '🚗 [ParkingLots] ERROR: AdminAPI.parkingLots not available!');
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">ParkingLots API not available</td></tr>';
                 return;
             }
             
-            console.log('🚗 [ParkingLots] AdminAPI available, making API call...');
+            AdminLogs.log('DEBUG', '🚗 [ParkingLots] AdminAPI available, making API call...');
             const response = await AdminAPI.parkingLots.getAll();
             
-            console.log('🚗 [ParkingLots] API Response received:', {
+            AdminLogs.log('DEBUG', '🚗 [ParkingLots] API Response received:', {
                 ok: response.ok,
                 status: response.status,
                 statusText: response.statusText,
@@ -41,21 +41,21 @@ const AdminParkingLots = {
             });
 
             if (response.ok) {
-                console.log('🚗 [ParkingLots] Response OK, parsing JSON...');
+                AdminLogs.log('DEBUG', '🚗 [ParkingLots] Response OK, parsing JSON...');
                 const lots = await response.json();
-                console.log('🚗 [ParkingLots] Parking lots data received:', lots);
-                console.log('🚗 [ParkingLots] Number of lots:', lots.length);
+                AdminLogs.log('DEBUG', '🚗 [ParkingLots] Parking lots data received:', lots);
+                AdminLogs.log('DEBUG', '🚗 [ParkingLots] Number of lots:', lots.length);
                 
                 tbody.innerHTML = '';
                 
                 if (lots.length === 0) {
-                    console.log('🚗 [ParkingLots] No parking lots found');
+                    AdminLogs.log('DEBUG', '🚗 [ParkingLots] No parking lots found');
                     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No parking lots found</td></tr>';
                     return;
                 }
                 
                 lots.forEach((lot, index) => {
-                    console.log(`🚗 [ParkingLots] Processing lot ${index + 1}:`, lot);
+                    AdminLogs.log('DEBUG', `🚗 [ParkingLots] Processing lot ${index + 1}:`, lot);
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${lot.id}</td>
@@ -69,34 +69,34 @@ const AdminParkingLots = {
                     tbody.appendChild(row);
                 });
 
-                console.log('🚗 [ParkingLots] Setting up delete button event listeners...');
+                AdminLogs.log('DEBUG', '🚗 [ParkingLots] Setting up delete button event listeners...');
                 document.querySelectorAll('.delete-lot-btn').forEach(button => {
                     button.addEventListener('click', (event) => {
                         const lotId = event.target.getAttribute('data-lot-id');
-                        console.log('🚗 [ParkingLots] Delete button clicked for lot ID:', lotId);
+                        AdminLogs.log('DEBUG', '🚗 [ParkingLots] Delete button clicked for lot ID:', lotId);
                         this.deleteParkingLot(lotId);
                     });
                 });
                 
-                console.log('🚗 [ParkingLots] ✅ Successfully loaded and displayed parking lots');
+                AdminLogs.log('INFO', '🚗 [ParkingLots] ✅ Successfully loaded and displayed parking lots');
             } else {
-                console.error('🚗 [ParkingLots] API Response not OK:', response.status, response.statusText);
+                AdminLogs.log('ERROR', '🚗 [ParkingLots] API Response not OK:', response.status, response.statusText);
                 try {
                     const errorData = await response.json();
-                    console.error('🚗 [ParkingLots] Error details:', errorData);
+                    AdminLogs.log('ERROR', '🚗 [ParkingLots] Error details:', errorData);
                 } catch (e) {
-                    console.error('🚗 [ParkingLots] Could not parse error response');
+                    AdminLogs.log('ERROR', '🚗 [ParkingLots] Could not parse error response');
                 }
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load parking lots</td></tr>';
             }
         } catch (error) {
-            console.error('🚗 [ParkingLots] Exception occurred during loadParkingLotsAdmin:', error);
-            console.error('🚗 [ParkingLots] Error stack:', error.stack);
+            AdminLogs.log('ERROR', '🚗 [ParkingLots] Exception occurred during loadParkingLotsAdmin:', error);
+            AdminLogs.log('ERROR', '🚗 [ParkingLots] Error stack:', error.stack);
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading parking lots</td></tr>';
             if (window.AdminNotifications) {
                 AdminNotifications.handleApiError(error, 'Failed to load parking lots');
             } else {
-                console.error('🚗 [ParkingLots] AdminNotifications not available for error handling');
+                AdminLogs.log('ERROR', '🚗 [ParkingLots] AdminNotifications not available for error handling');
             }
         }
     },
@@ -111,7 +111,7 @@ const AdminParkingLots = {
 
             if (response.ok) {
                 const result = await response.json();
-                console.log('🚗 [ParkingLots] Delete response:', result);
+                AdminLogs.log('INFO', '🚗 [ParkingLots] Delete response:', result);
                 
                 let message = result.message || 'Parking lot deleted successfully';
                 if (result.deleted_spaces > 0 || result.preserved_bookings > 0) {
@@ -199,12 +199,12 @@ const AdminParkingLots = {
 
     // Initialize parking lots module
     init() {
-        console.log('Initializing parking lots module...');
+        AdminLogs.log('INFO', 'Initializing parking lots module...');
         
         // Setup form event listeners with retry mechanism
         this.setupEventListeners();
         
-        console.log('Parking lots module initialized');
+        AdminLogs.log('INFO', 'Parking lots module initialized');
     },
 
     // Setup event listeners with proper error handling
@@ -214,32 +214,32 @@ const AdminParkingLots = {
         if (addParkingLotForm && !addParkingLotForm.hasAttribute('data-parking-lots-listener')) {
             addParkingLotForm.addEventListener('submit', this.handleAddParkingLotSubmit.bind(this));
             addParkingLotForm.setAttribute('data-parking-lots-listener', 'true');
-            console.log('Add parking lot form listener attached');
+            AdminLogs.log('DEBUG', 'Add parking lot form listener attached');
         }
 
         const addParkingLotBtn = document.getElementById('add-parking-lot-btn');
         if (addParkingLotBtn && !addParkingLotBtn.hasAttribute('data-parking-lots-listener')) {
             addParkingLotBtn.addEventListener('click', this.showAddParkingLotModal.bind(this));
             addParkingLotBtn.setAttribute('data-parking-lots-listener', 'true');
-            console.log('Add parking lot button listener attached');
+            AdminLogs.log('DEBUG', 'Add parking lot button listener attached');
         }
 
         const refreshParkingLotsBtn = document.getElementById('refresh-parking-lots-btn');
         if (refreshParkingLotsBtn && !refreshParkingLotsBtn.hasAttribute('data-parking-lots-listener')) {
             refreshParkingLotsBtn.addEventListener('click', this.loadParkingLotsAdmin.bind(this));
             refreshParkingLotsBtn.setAttribute('data-parking-lots-listener', 'true');
-            console.log('Refresh parking lots button listener attached');
+            AdminLogs.log('DEBUG', 'Refresh parking lots button listener attached');
         }
 
         // If elements aren't found, they might not be rendered yet
         if (!addParkingLotForm || !addParkingLotBtn || !refreshParkingLotsBtn) {
-            console.log('Some parking lots elements not found yet, will retry when tab is activated');
+            AdminLogs.log('DEBUG', 'Some parking lots elements not found yet, will retry when tab is activated');
         }
     },
 
     // Ensure initialization when tab becomes active
     ensureInitialized() {
-        console.log('Ensuring parking lots module is properly initialized...');
+        AdminLogs.log('DEBUG', 'Ensuring parking lots module is properly initialized...');
         this.setupEventListeners();
     }
 };
@@ -250,4 +250,4 @@ window.AdminParkingLots = AdminParkingLots;
 // Initialize when module loads (but elements might not exist yet)
 AdminParkingLots.init();
 
-console.log('Admin parking lots module loaded!');
+AdminLogs.log('INFO', 'Admin parking lots module loaded!');

@@ -151,18 +151,46 @@ class BookingService:
         start_hour = local_start.hour
         end_hour = local_end.hour
         
-        if start_hour < 6 or start_hour > 23:
-            tz_display = timezone_name.replace('_', ' ')
+        # More robust business hours validation
+        tz_display = timezone_name.replace('_', ' ')
+        if not (6 <= start_hour < 23):
+            log_with_context(
+                logger, logging.WARNING,
+                f"Booking validation failed: Start time {local_start.strftime('%H:%M')} is outside business hours (6 AM - 11 PM {tz_display})",
+                user_id=user_id,
+                extra_data={"local_start_time": local_start.isoformat()}
+            )
             raise BookingValidationError(f"Bookings can only start between 6:00 AM and 11:00 PM {tz_display} time")
-        
-        # Allow overnight bookings but end time must be reasonable next day
-        if end_hour > 23 and local_end.date() == local_start.date():
-            tz_display = timezone_name.replace('_', ' ')
-            raise BookingValidationError(f"Same-day bookings must end by 11:00 PM {tz_display} time")
-        
-        if local_end.date() > local_start.date() and end_hour > 11:
-            tz_display = timezone_name.replace('_', ' ')
-            raise BookingValidationError(f"Overnight bookings must end by 11:00 AM {tz_display} time the next day")
+
+        if local_start.date() == local_end.date():
+            # Same-day booking must end by 11 PM
+            if end_hour >= 23 and local_end.minute > 0:
+                log_with_context(
+                    logger, logging.WARNING,
+                    f"Booking validation failed: Same-day booking ends after 11 PM {tz_display}",
+                    user_id=user_id,
+                    extra_data={"local_end_time": local_end.isoformat()}
+                )
+                raise BookingValidationError(f"Same-day bookings must end by 11:00 PM {tz_display} time")
+        elif (local_end.date() - local_start.date()).days == 1:
+            # Overnight booking must end by 11 AM next day
+            if end_hour >= 11 and local_end.minute > 0:
+                log_with_context(
+                    logger, logging.WARNING,
+                    f"Booking validation failed: Overnight booking ends after 11 AM {tz_display}",
+                    user_id=user_id,
+                    extra_data={"local_end_time": local_end.isoformat()}
+                )
+                raise BookingValidationError(f"Overnight bookings must end by 11:00 AM {tz_display} time the next day")
+        elif local_end.date() > local_start.date():
+            # Bookings spanning more than one night are disallowed by duration check, but this is an extra safeguard
+            log_with_context(
+                logger, logging.WARNING,
+                f"Booking validation failed: Booking spans more than one night",
+                user_id=user_id,
+                extra_data={"local_start": local_start.isoformat(), "local_end": local_end.isoformat()}
+            )
+            raise BookingValidationError("Bookings cannot span more than one night")
         
         # Check user's concurrent booking limit (max 5 active bookings per user)
         active_bookings_query = self.db.query(models.Booking).filter(

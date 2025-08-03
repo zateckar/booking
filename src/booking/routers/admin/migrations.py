@@ -2,7 +2,7 @@
 Admin routes for migration management.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import Dict, List
 
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/admin/migrations", tags=["admin", "migrations"])
 
 @router.get("/status")
 async def get_migration_status(
+    request: Request,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ) -> Dict:
@@ -77,6 +78,7 @@ async def get_migration_status(
 
 @router.post("/run")
 async def run_migrations(
+    request: Request,
     dry_run: bool = False,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
@@ -132,6 +134,7 @@ async def run_migrations(
 
 @router.post("/rollback/{version}")
 async def rollback_migration(
+    request: Request,
     version: str,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)

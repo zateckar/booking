@@ -3,34 +3,55 @@
 const AdminAPI = {
     // Base API request method
     async makeRequest(url, options = {}) {
-        console.log(`🌐 [AdminAPI] Making request to: ${url}`);
-        console.log(`🌐 [AdminAPI] Request options:`, options);
-        
+        AdminLogs.log('DEBUG', `🌐 [AdminAPI] Making request to: ${url}`);
+        AdminLogs.log('DEBUG', `🌐 [AdminAPI] Request options:`, options);
+
         try {
-            if (!window.auth) {
-                console.error('🌐 [AdminAPI] ERROR: window.auth not available!');
-                throw new Error('Authentication module not loaded');
+            const token = localStorage.getItem('access_token');
+            const headers = { ...options.headers };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            // Properly handle body and Content-Type
+            let body = options.body;
+            if (body && typeof body === 'object' && !(body instanceof FormData)) {
+                body = JSON.stringify(body);
+                if (!headers['Content-Type']) {
+                    headers['Content-Type'] = 'application/json';
+                }
+            }
+
+            const response = await fetch(url, {
+                ...options,
+                headers,
+                body,
+                credentials: 'include'
+            });
+
+            if (response.status === 401 && window.auth && !window.auth.isRefreshing()) {
+                AdminLogs.log('INFO', `API request to ${url} returned 401, attempting token refresh...`);
+                await window.auth.refreshAccessToken();
+                const newToken = localStorage.getItem('access_token');
+                if (newToken && newToken !== token) {
+                    AdminLogs.log('INFO', `Retrying API request to ${url} with refreshed token...`);
+                    headers['Authorization'] = `Bearer ${newToken}`;
+                    return fetch(url, { ...options, headers, body, credentials: 'include' });
+                }
             }
             
-            if (!window.auth.makeAuthenticatedRequest) {
-                console.error('🌐 [AdminAPI] ERROR: window.auth.makeAuthenticatedRequest not available!');
-                throw new Error('makeAuthenticatedRequest function not available');
-            }
-            
-            console.log(`🌐 [AdminAPI] Calling window.auth.makeAuthenticatedRequest...`);
-            const response = await window.auth.makeAuthenticatedRequest(url, options);
-            
-            console.log(`🌐 [AdminAPI] Response received:`, {
+            AdminLogs.log('DEBUG', `🌐 [AdminAPI] Response received:`, {
                 ok: response.ok,
                 status: response.status,
                 statusText: response.statusText,
                 url: response.url
             });
-            
+
             return response;
         } catch (error) {
-            console.error('🌐 [AdminAPI] API request failed:', error);
-            console.error('🌐 [AdminAPI] Error stack:', error.stack);
+            AdminLogs.log('ERROR', '🌐 [AdminAPI] API request failed:', error);
+            AdminLogs.log('ERROR', '🌐 [AdminAPI] Error stack:', error.stack);
             throw error;
         }
     },
@@ -44,14 +65,20 @@ const AdminAPI = {
         async create(userData) {
             return await AdminAPI.makeRequest('/api/admin/users', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData)
+                body: userData
             });
         },
 
         async setAdmin(userId, isAdmin) {
             return await AdminAPI.makeRequest(`/api/admin/users/${userId}/set-admin?is_admin=${isAdmin}`, {
                 method: 'PUT'
+            });
+        },
+
+        async setPassword(userId, password) {
+            return await AdminAPI.makeRequest(`/api/admin/users/${userId}/set-password`, {
+                method: 'PUT',
+                body: { password }
             });
         },
 
@@ -280,6 +307,12 @@ const AdminAPI = {
         async cleanup(days) {
             return await AdminAPI.makeRequest(`/api/admin/logs/cleanup?days=${days}`, {
                 method: 'DELETE'
+            });
+        },
+
+        async vacuum() {
+            return await AdminAPI.makeRequest('/api/admin/logs/vacuum', {
+                method: 'POST'
             });
         },
 
@@ -553,4 +586,4 @@ const AdminAPI = {
 // Export for global access
 window.AdminAPI = AdminAPI;
 
-console.log('Admin API client module loaded!');
+AdminLogs.log('INFO', 'Admin API client module loaded!');
