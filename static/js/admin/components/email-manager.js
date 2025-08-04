@@ -386,18 +386,16 @@ class EmailManager extends HTMLElement {
 
     // API methods
     async fetchEmailSettings() {
-        return fetch('/admin/api/email/settings', {
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+        return fetch('/api/admin/email-settings', {
             credentials: 'include'
         });
     }
 
     async updateEmailSettings(data) {
-        return fetch('/admin/api/email/settings', {
-            method: 'POST',
+        return fetch('/api/admin/email-settings', {
+            method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.getAuthToken()}`
+                'Content-Type': 'application/json'
             },
             credentials: 'include',
             body: JSON.stringify(data)
@@ -405,17 +403,13 @@ class EmailManager extends HTMLElement {
     }
 
     async testEmailConfig() {
-        return fetch('/admin/api/email/test-config', {
+        return fetch('/api/admin/email-settings/test', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
             credentials: 'include'
         });
     }
 
     // Utility methods
-    getAuthToken() {
-        return localStorage.getItem('access_token') || '';
-    }
 
     setLoading(loading) {
         const overlay = this.querySelector('#loading-overlay');

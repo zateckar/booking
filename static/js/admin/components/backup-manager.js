@@ -484,20 +484,19 @@ class BackupManager extends HTMLElement {
         errorDiv.style.display = 'block';
     }
 
+    
     // API methods
     async fetchBackupSettings() {
-        return fetch('/admin/api/backup/settings', {
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+        return fetch('/api/admin/backup-settings/', {
             credentials: 'include'
         });
     }
 
     async updateBackupSettings(data) {
-        return fetch('/admin/api/backup/settings', {
-            method: 'POST',
+        return fetch('/api/admin/backup-settings/', {
+            method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.getAuthToken()}`
+                'Content-Type': 'application/json'
             },
             credentials: 'include',
             body: JSON.stringify(data)
@@ -505,25 +504,30 @@ class BackupManager extends HTMLElement {
     }
 
     async testBackupConnection() {
-        return fetch('/admin/api/backup/test-connection', {
+        return fetch('/api/admin/backup-settings/test-connection', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
-
+            credentials: 'include'
         });
     }
 
     async startBackupNow() {
-        return fetch('/admin/api/backup/backup-now', {
+        return fetch('/api/admin/backup-settings/backup-now', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
-
+            credentials: 'include'
         });
     }
 
     async fetchBackupList(limit = 20) {
-        return fetch(`/admin/api/backup/list?limit=${limit}`, {
-            headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
-            
+        return fetch(`/api/admin/backup-settings/list-backups?limit=${limit}`, {
+            credentials: 'include'
+        });
+    }
+
+    // Utility methods
+
+    async fetchBackupList(limit = 20) {
+        return fetch(`/api/admin/backup-settings/list-backups?limit=${limit}`, {
+            credentials: 'include'
         });
     }
 
